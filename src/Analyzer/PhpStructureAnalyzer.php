@@ -6,6 +6,7 @@ namespace App\Analyzer;
 
 use App\Inspection\Finding;
 use App\Inspection\Php\ClassDesignInspector;
+use App\Inspection\Php\CohesionInspector;
 use App\Inspection\Php\MethodDesignInspector;
 use PhpParser\Error;
 use PhpParser\Node;
@@ -18,13 +19,16 @@ use PhpParser\ParserFactory;
 final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 {
     private ClassDesignInspector $classInspector;
+    private CohesionInspector $cohesionInspector;
     private MethodDesignInspector $methodInspector;
 
     public function __construct(
         ?ClassDesignInspector $classInspector = null,
+        ?CohesionInspector $cohesionInspector = null,
         ?MethodDesignInspector $methodInspector = null,
     ) {
         $this->classInspector = $classInspector ?? new ClassDesignInspector();
+        $this->cohesionInspector = $cohesionInspector ?? new CohesionInspector();
         $this->methodInspector = $methodInspector ?? new MethodDesignInspector();
     }
 
@@ -156,6 +160,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         $metrics['methods'] += count($methods);
 
         array_push($findings, ...$this->classInspector->inspectClass($class, $file));
+        array_push($findings, ...$this->cohesionInspector->inspect($class, $file));
 
         foreach ($methods as $method) {
             $result = $this->methodInspector->inspect($className, $method, $file);

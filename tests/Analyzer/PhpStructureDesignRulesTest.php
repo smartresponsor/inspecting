@@ -26,4 +26,14 @@ final class PhpStructureDesignRulesTest extends TestCase
         self::assertSame('solid.dip.service-locator', $result->findings[0]->rule);
         self::assertSame('container', $result->findings[0]->evidence['property']);
     }
+
+    public function testItReportsLowPropertyCohesion(): void
+    {
+        $result = (new PhpStructureAnalyzer())->inspect(__DIR__ . '/../Fixture/Cohesion');
+
+        self::assertCount(1, $result->findings);
+        self::assertSame('solid.srp.low-property-cohesion', $result->findings[0]->rule);
+        self::assertSame(4, $result->findings[0]->evidence['components']);
+        self::assertSame(4, $result->findings[0]->evidence['participatingMethods']);
+    }
 }
