@@ -6,6 +6,7 @@ namespace App\Analyzer;
 
 use App\Inspection\Finding;
 use App\Inspection\Php\ClassDesignInspector;
+use App\Inspection\Php\ClassMetricsInspector;
 use App\Inspection\Php\CohesionInspector;
 use App\Inspection\Php\MethodDesignInspector;
 use PhpParser\Error;
@@ -19,15 +20,18 @@ use PhpParser\ParserFactory;
 final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 {
     private ClassDesignInspector $classInspector;
+    private ClassMetricsInspector $classMetricsInspector;
     private CohesionInspector $cohesionInspector;
     private MethodDesignInspector $methodInspector;
 
     public function __construct(
         ?ClassDesignInspector $classInspector = null,
+        ?ClassMetricsInspector $classMetricsInspector = null,
         ?CohesionInspector $cohesionInspector = null,
         ?MethodDesignInspector $methodInspector = null,
     ) {
         $this->classInspector = $classInspector ?? new ClassDesignInspector();
+        $this->classMetricsInspector = $classMetricsInspector ?? new ClassMetricsInspector();
         $this->cohesionInspector = $cohesionInspector ?? new CohesionInspector();
         $this->methodInspector = $methodInspector ?? new MethodDesignInspector();
     }
@@ -48,13 +52,16 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
         $findings = [];
-        /** @var array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int} $metrics */
+        /** @var array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics */
         $metrics = [
             'files' => 0,
             'classes' => 0,
             'interfaces' => 0,
             'methods' => 0,
             'maxComplexity' => 0,
+            'maxConstructorDependencies' => 0,
+            'maxImplementedInterfaces' => 0,
+            'inheritedClasses' => 0,
         ];
 
         $iterator = new \RecursiveIteratorIterator(
@@ -76,7 +83,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
     /**
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
      */
     private function inspectFile(
         Parser $parser,
@@ -119,7 +126,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
     /**
      * @param list<Node> $nodes
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
      */
     private function inspectNodes(array $nodes, string $file, array &$findings, array &$metrics): void
     {
@@ -151,13 +158,24 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
     /**
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
      */
     private function inspectClass(Class_ $class, string $file, array &$findings, array &$metrics): void
     {
         $className = $class->name?->toString() ?? 'anonymous';
         $methods = $class->getMethods();
         $metrics['methods'] += count($methods);
+
+        $classMetrics = $this->classMetricsInspector->inspect($class);
+        $metrics['maxConstructorDependencies'] = max(
+            $metrics['maxConstructorDependencies'],
+            $classMetrics['constructorDependencies'],
+        );
+        $metrics['maxImplementedInterfaces'] = max(
+            $metrics['maxImplementedInterfaces'],
+            $classMetrics['implementedInterfaces'],
+        );
+        $metrics['inheritedClasses'] += $classMetrics['hasParent'] ? 1 : 0;
 
         array_push($findings, ...$this->classInspector->inspectClass($class, $file));
         array_push($findings, ...$this->cohesionInspector->inspect($class, $file));
