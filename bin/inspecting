@@ -6,6 +6,7 @@ declare(strict_types=1);
 use App\Analyzer\PhpStanAnalyzer;
 use App\Analyzer\PhpStructureAnalyzer;
 use App\Analyzer\RectorAnalyzer;
+use App\Analyzer\SemgrepAnalyzer;
 use App\Command\InspectCommand;
 use App\Inspection\Inspector;
 use Symfony\Component\Console\Application;
@@ -24,5 +25,6 @@ $application->addCommand(new InspectCommand(new Inspector([
     new PhpStanAnalyzer(),
     new PhpStructureAnalyzer(),
     new RectorAnalyzer(),
+    new SemgrepAnalyzer(),
 ])));
 $application->run();

@@ -26,7 +26,7 @@
   "scripts": {
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
-    "phpstan": "phpstan analyse src tests --level=max",
+    "phpstan": "phpstan analyse src tests bin/inspecting --level=max",
     "rector:check": "rector process --dry-run --config rector.php",
     "rector:fix": "rector process --config rector.php",
     "inspect:self": "@php bin/inspecting inspect .",
