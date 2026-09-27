@@ -34,7 +34,7 @@ final readonly class InspectionReport implements \JsonSerializable
      *     analyzers: list<string>,
      *     findings: list<Finding>,
      *     metrics: array<string, int|float|string|bool|null>,
-     *     summary: array{findingCount: int},
+     *     summary: InspectionSummary,
      *     rawReportReferences: list<string>
      * }
      */
@@ -47,9 +47,7 @@ final readonly class InspectionReport implements \JsonSerializable
             'analyzers' => $this->analyzers,
             'findings' => $this->findings,
             'metrics' => $this->metrics,
-            'summary' => [
-                'findingCount' => count($this->findings),
-            ],
+            'summary' => InspectionSummary::fromFindings($this->findings),
             'rawReportReferences' => $this->rawReportReferences,
         ];
     }
