@@ -14,7 +14,10 @@ final readonly class Inspector
      */
     public function __construct(private array $analyzers) {}
 
-    public function inspect(string $target): InspectionReport
+    /**
+     * @param list<string> $selectedAnalyzers
+     */
+    public function inspect(string $target, array $selectedAnalyzers = []): InspectionReport
     {
         $startedAt = new \DateTimeImmutable();
         $names = [];
@@ -23,6 +26,10 @@ final readonly class Inspector
         $rawReportReferences = [];
 
         foreach ($this->analyzers as $analyzer) {
+            if ([] !== $selectedAnalyzers && !in_array($analyzer->name(), $selectedAnalyzers, true)) {
+                continue;
+            }
+
             try {
                 $result = $analyzer->inspect($target);
             } catch (AnalyzerUnavailable) {
