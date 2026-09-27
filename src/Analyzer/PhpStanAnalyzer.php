@@ -56,59 +56,119 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
 
     private function parse(string $json): AnalyzerResult
     {
+        $data = $this->decode($json);
+        $findings = [
+            ...$this->parseFileFindings($data),
+            ...$this->parseGlobalFindings($data),
+        ];
+        $totals = $this->totals($data, count($findings));
+
+        return new AnalyzerResult(
+            analyzer: $this->name(),
+            findings: $findings,
+            metrics: $totals,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decode(string $json): array
+    {
         $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
 
         if (!is_array($data)) {
             throw new \UnexpectedValueException('PHPStan JSON output must decode to an object.');
         }
 
-        $findings = [];
+        foreach (array_keys($data) as $key) {
+            if (!is_string($key)) {
+                throw new \UnexpectedValueException('PHPStan JSON root keys must be strings.');
+            }
+        }
+
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return list<Finding>
+     */
+    private function parseFileFindings(array $data): array
+    {
         $files = $data['files'] ?? [];
 
-        if (is_array($files)) {
-            foreach ($files as $file => $fileResult) {
-                if (!is_string($file) || !is_array($fileResult)) {
-                    continue;
-                }
+        if (!is_array($files)) {
+            return [];
+        }
 
-                $messages = $fileResult['messages'] ?? [];
+        $findings = [];
 
-                if (!is_array($messages)) {
-                    continue;
-                }
+        foreach ($files as $file => $fileResult) {
+            if (!is_string($file) || !is_array($fileResult)) {
+                continue;
+            }
 
-                foreach ($messages as $message) {
-                    if (!is_array($message)) {
-                        continue;
-                    }
+            $messages = $fileResult['messages'] ?? [];
 
-                    $identifier = $message['identifier'] ?? 'phpstan.issue';
-                    $text = $message['message'] ?? 'PHPStan finding';
-                    $line = $message['line'] ?? null;
+            if (!is_array($messages)) {
+                continue;
+            }
 
-                    $findings[] = new Finding(
-                        source: $this->name(),
-                        rule: is_string($identifier) ? $identifier : 'phpstan.issue',
-                        category: 'correctness',
-                        severity: 'high',
-                        confidence: 1.0,
-                        message: is_string($text) ? $text : 'PHPStan finding',
-                        evidence: ['ignorable' => true === ($message['ignorable'] ?? false)],
-                        file: $file,
-                        line: is_int($line) ? $line : null,
-                    );
+            foreach ($messages as $message) {
+                $finding = $this->parseMessage($file, $message);
+
+                if ($finding instanceof \App\Inspection\Finding) {
+                    $findings[] = $finding;
                 }
             }
         }
 
+        return $findings;
+    }
+
+    private function parseMessage(string $file, mixed $message): ?Finding
+    {
+        if (!is_array($message)) {
+            return null;
+        }
+
+        $identifier = $message['identifier'] ?? 'phpstan.issue';
+        $text = $message['message'] ?? 'PHPStan finding';
+        $line = $message['line'] ?? null;
+
+        return new Finding(
+            source: $this->name(),
+            rule: is_string($identifier) ? $identifier : 'phpstan.issue',
+            category: 'correctness',
+            severity: 'high',
+            confidence: 1.0,
+            message: is_string($text) ? $text : 'PHPStan finding',
+            evidence: ['ignorable' => true === ($message['ignorable'] ?? false)],
+            file: $file,
+            line: is_int($line) ? $line : null,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return list<Finding>
+     */
+    private function parseGlobalFindings(array $data): array
+    {
         $errors = $data['errors'] ?? [];
 
-        if (is_array($errors)) {
-            foreach ($errors as $error) {
-                if (!is_string($error)) {
-                    continue;
-                }
+        if (!is_array($errors)) {
+            return [];
+        }
 
+        $findings = [];
+
+        foreach ($errors as $error) {
+            if (is_string($error)) {
                 $findings[] = new Finding(
                     source: $this->name(),
                     rule: 'phpstan.global',
@@ -120,19 +180,23 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
             }
         }
 
-        $totals = $data['totals'] ?? [];
-        $errorsTotal = is_array($totals) && is_int($totals['errors'] ?? null) ? $totals['errors'] : 0;
-        $fileErrorsTotal = is_array($totals) && is_int($totals['file_errors'] ?? null)
-            ? $totals['file_errors']
-            : count($findings);
+        return $findings;
+    }
 
-        return new AnalyzerResult(
-            analyzer: $this->name(),
-            findings: $findings,
-            metrics: [
-                'errors' => $errorsTotal,
-                'fileErrors' => $fileErrorsTotal,
-            ],
-        );
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{errors:int, fileErrors:int}
+     */
+    private function totals(array $data, int $fallbackFileErrors): array
+    {
+        $totals = $data['totals'] ?? [];
+
+        return [
+            'errors' => is_array($totals) && is_int($totals['errors'] ?? null) ? $totals['errors'] : 0,
+            'fileErrors' => is_array($totals) && is_int($totals['file_errors'] ?? null)
+                ? $totals['file_errors']
+                : $fallbackFileErrors,
+        ];
     }
 }

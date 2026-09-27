@@ -29,6 +29,7 @@ use PhpParser\Node\Stmt\Foreach_;
 use PhpParser\Node\Stmt\If_;
 use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\While_;
+use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
 final readonly class PhpStructureAnalyzer implements AnalyzerInterface
@@ -39,6 +40,22 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
     private const int METHOD_LINE_THRESHOLD = 60;
     private const int COMPLEXITY_THRESHOLD = 15;
     private const int INTERFACE_METHOD_THRESHOLD = 10;
+
+    /** @var list<class-string<Node>> */
+    private const array COMPLEXITY_NODE_TYPES = [
+        If_::class,
+        ElseIf_::class,
+        For_::class,
+        Foreach_::class,
+        While_::class,
+        Do_::class,
+        Case_::class,
+        Catch_::class,
+        Ternary::class,
+        BooleanAnd::class,
+        BooleanOr::class,
+        MatchArm::class,
+    ];
 
     public function name(): string
     {
@@ -70,41 +87,9 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         );
 
         foreach ($iterator as $fileInfo) {
-            if (!$fileInfo instanceof \SplFileInfo || !$fileInfo->isFile() || 'php' !== strtolower($fileInfo->getExtension())) {
-                continue;
+            if ($fileInfo instanceof \SplFileInfo && $fileInfo->isFile() && 'php' === strtolower($fileInfo->getExtension())) {
+                $this->inspectFile($parser, $target, $fileInfo, $findings, $metrics);
             }
-
-            $contents = file_get_contents($fileInfo->getPathname());
-
-            if (false === $contents) {
-                continue;
-            }
-
-            ++$metrics['files'];
-            $relativeFile = $this->relativePath($target, $fileInfo->getPathname());
-
-            try {
-                $nodes = $parser->parse($contents);
-            } catch (Error $error) {
-                $findings[] = new Finding(
-                    source: $this->name(),
-                    rule: 'php.parse-error',
-                    category: 'correctness',
-                    severity: 'critical',
-                    confidence: 1.0,
-                    message: $error->getMessage(),
-                    file: $relativeFile,
-                    line: $error->getStartLine(),
-                );
-
-                continue;
-            }
-
-            if (null === $nodes) {
-                continue;
-            }
-
-            $this->inspectNodes(array_values($nodes), $relativeFile, $findings, $metrics);
         }
 
         return new AnalyzerResult(
@@ -112,6 +97,48 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
             findings: $findings,
             metrics: $metrics,
         );
+    }
+
+    /**
+     * @param list<Finding> $findings
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int} $metrics
+     */
+    private function inspectFile(
+        Parser $parser,
+        string $target,
+        \SplFileInfo $fileInfo,
+        array &$findings,
+        array &$metrics,
+    ): void {
+        $contents = file_get_contents($fileInfo->getPathname());
+
+        if (false === $contents) {
+            return;
+        }
+
+        ++$metrics['files'];
+        $relativeFile = $this->relativePath($target, $fileInfo->getPathname());
+
+        try {
+            $nodes = $parser->parse($contents);
+        } catch (Error $error) {
+            $findings[] = new Finding(
+                source: $this->name(),
+                rule: 'php.parse-error',
+                category: 'correctness',
+                severity: 'critical',
+                confidence: 1.0,
+                message: $error->getMessage(),
+                file: $relativeFile,
+                line: $error->getStartLine(),
+            );
+
+            return;
+        }
+
+        if (null !== $nodes) {
+            $this->inspectNodes(array_values($nodes), $relativeFile, $findings, $metrics);
+        }
     }
 
     /**
@@ -154,64 +181,98 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         $methods = $class->getMethods();
         $metrics['methods'] += count($methods);
 
-        $constructor = $class->getMethod('__construct');
-        $dependencyCount = $constructor instanceof \PhpParser\Node\Stmt\ClassMethod
-            ? count(array_filter(
-                $constructor->params,
-                fn(Param $param): bool => $this->isObjectDependency($param->type),
-            ))
-            : 0;
-
-        if ($dependencyCount > self::CONSTRUCTOR_DEPENDENCY_THRESHOLD) {
-            $findings[] = new Finding(
-                source: $this->name(),
-                rule: 'solid.srp.excessive-constructor-dependencies',
-                category: 'design',
-                severity: $dependencyCount >= 12 ? 'high' : 'medium',
-                confidence: 0.78,
-                message: sprintf('%s has %d constructor dependencies; review whether it owns too many responsibilities.', $className, $dependencyCount),
-                evidence: ['dependencyCount' => $dependencyCount],
-                file: $file,
-                line: $constructor->getStartLine(),
-            );
-        }
-
-        $classLines = $class->getEndLine() - $class->getStartLine() + 1;
-
-        if ($classLines > self::CLASS_LINE_THRESHOLD) {
-            $findings[] = new Finding(
-                source: $this->name(),
-                rule: 'smell.large-class',
-                category: 'maintainability',
-                severity: 'medium',
-                confidence: 0.72,
-                message: sprintf('%s spans %d lines; review cohesion and responsibility boundaries.', $className, $classLines),
-                evidence: ['lines' => $classLines],
-                file: $file,
-                line: $class->getStartLine(),
-                endLine: $class->getEndLine(),
-            );
-        }
-
-        $publicMethodCount = count(array_filter($methods, static fn(ClassMethod $method): bool => $method->isPublic()));
-
-        if ($publicMethodCount > self::PUBLIC_METHOD_THRESHOLD) {
-            $findings[] = new Finding(
-                source: $this->name(),
-                rule: 'smell.large-public-api',
-                category: 'design',
-                severity: 'medium',
-                confidence: 0.7,
-                message: sprintf('%s exposes %d public methods; review whether its public responsibility surface is too broad.', $className, $publicMethodCount),
-                evidence: ['publicMethodCount' => $publicMethodCount],
-                file: $file,
-                line: $class->getStartLine(),
-            );
-        }
+        $this->inspectConstructorDependencies($className, $class, $file, $findings);
+        $this->inspectClassSize($className, $class, $file, $findings);
+        $this->inspectPublicApi($className, $class, $file, $findings);
 
         foreach ($methods as $method) {
             $this->inspectMethod($className, $method, $file, $findings, $metrics);
         }
+    }
+
+    /**
+     * @param list<Finding> $findings
+     */
+    private function inspectConstructorDependencies(string $className, Class_ $class, string $file, array &$findings): void
+    {
+        $constructor = $class->getMethod('__construct');
+
+        if (!$constructor instanceof ClassMethod) {
+            return;
+        }
+
+        $dependencyCount = count(array_filter(
+            $constructor->params,
+            fn(Param $param): bool => $this->isObjectDependency($param->type),
+        ));
+
+        if ($dependencyCount <= self::CONSTRUCTOR_DEPENDENCY_THRESHOLD) {
+            return;
+        }
+
+        $findings[] = new Finding(
+            source: $this->name(),
+            rule: 'solid.srp.excessive-constructor-dependencies',
+            category: 'design',
+            severity: $dependencyCount >= 12 ? 'high' : 'medium',
+            confidence: 0.78,
+            message: sprintf('%s has %d constructor dependencies; review whether it owns too many responsibilities.', $className, $dependencyCount),
+            evidence: ['dependencyCount' => $dependencyCount],
+            file: $file,
+            line: $constructor->getStartLine(),
+        );
+    }
+
+    /**
+     * @param list<Finding> $findings
+     */
+    private function inspectClassSize(string $className, Class_ $class, string $file, array &$findings): void
+    {
+        $classLines = $class->getEndLine() - $class->getStartLine() + 1;
+
+        if ($classLines <= self::CLASS_LINE_THRESHOLD) {
+            return;
+        }
+
+        $findings[] = new Finding(
+            source: $this->name(),
+            rule: 'smell.large-class',
+            category: 'maintainability',
+            severity: 'medium',
+            confidence: 0.72,
+            message: sprintf('%s spans %d lines; review cohesion and responsibility boundaries.', $className, $classLines),
+            evidence: ['lines' => $classLines],
+            file: $file,
+            line: $class->getStartLine(),
+            endLine: $class->getEndLine(),
+        );
+    }
+
+    /**
+     * @param list<Finding> $findings
+     */
+    private function inspectPublicApi(string $className, Class_ $class, string $file, array &$findings): void
+    {
+        $publicMethodCount = count(array_filter(
+            $class->getMethods(),
+            static fn(ClassMethod $method): bool => $method->isPublic(),
+        ));
+
+        if ($publicMethodCount <= self::PUBLIC_METHOD_THRESHOLD) {
+            return;
+        }
+
+        $findings[] = new Finding(
+            source: $this->name(),
+            rule: 'smell.large-public-api',
+            category: 'design',
+            severity: 'medium',
+            confidence: 0.7,
+            message: sprintf('%s exposes %d public methods; review whether its public responsibility surface is too broad.', $className, $publicMethodCount),
+            evidence: ['publicMethodCount' => $publicMethodCount],
+            file: $file,
+            line: $class->getStartLine(),
+        );
     }
 
     /**
@@ -299,20 +360,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
         foreach ($values as $value) {
             if ($value instanceof Node) {
-                if (
-                    $value instanceof If_
-                    || $value instanceof ElseIf_
-                    || $value instanceof For_
-                    || $value instanceof Foreach_
-                    || $value instanceof While_
-                    || $value instanceof Do_
-                    || $value instanceof Case_
-                    || $value instanceof Catch_
-                    || $value instanceof Ternary
-                    || $value instanceof BooleanAnd
-                    || $value instanceof BooleanOr
-                    || $value instanceof MatchArm
-                ) {
+                if ($this->isComplexityNode($value)) {
                     ++$complexity;
                 }
 
@@ -331,6 +379,17 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         }
 
         return $complexity;
+    }
+
+    private function isComplexityNode(Node $node): bool
+    {
+        foreach (self::COMPLEXITY_NODE_TYPES as $type) {
+            if ($node instanceof $type) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isObjectDependency(Identifier|Name|ComplexType|null $type): bool
