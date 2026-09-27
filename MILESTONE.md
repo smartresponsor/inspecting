@@ -12,7 +12,7 @@ As of the current master baseline:
 
 - Phase 0: complete.
 - Phase 1: substantially complete; normalized Finding, InspectionReport, InspectionSummary, analyzer result contract, JSON CLI output, and fixture-driven tests are implemented. A dedicated reusable process abstraction remains optional cleanup because Symfony Process is currently encapsulated inside adapters.
-- Phase 2: PHPStan and Rector adapters are active. Semgrep JSON support is implemented as an optional local analyzer and is skipped when a repository has no local Semgrep configuration or binary. Raw-report reference persistence is still pending.
+- Phase 2: PHPStan and Rector adapters are active. Semgrep JSON support is implemented as an optional local analyzer and is skipped when a repository has no local Semgrep configuration or binary. Normalized report persistence is implemented under `.inspecting/reports`; raw analyzer report references remain pending.
 - Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, and property-cohesion groups. Coupling/fan-in/fan-out and inheritance-depth metrics remain.
 - Phase 4: active. Current native SOLID/smell rules cover SRP collaborator overload, SRP low property cohesion, OCP repeated type dispatch, ISP oversized interfaces, DIP service locator, large class/public API, long methods, and high complexity.
 - Phase 5: partially complete. `inspect <target>` emits stable machine-readable JSON with compact consumer summaries. Console MCP-specific execution/read tools and persisted report paths remain.
