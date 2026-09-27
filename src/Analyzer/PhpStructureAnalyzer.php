@@ -10,6 +10,7 @@ use App\Inspection\Php\ClassMetricsInspector;
 use App\Inspection\Php\CohesionInspector;
 use App\Inspection\Php\MethodDesignInspector;
 use App\Inspection\Php\ProjectCouplingInspector;
+use App\Inspection\RawReportWriter;
 use PhpParser\Error;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
@@ -26,17 +27,20 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
     private ClassMetricsInspector $classMetricsInspector;
     private CohesionInspector $cohesionInspector;
     private MethodDesignInspector $methodInspector;
+    private RawReportWriter $rawReportWriter;
 
     public function __construct(
         ?ClassDesignInspector $classInspector = null,
         ?ClassMetricsInspector $classMetricsInspector = null,
         ?CohesionInspector $cohesionInspector = null,
         ?MethodDesignInspector $methodInspector = null,
+        ?RawReportWriter $rawReportWriter = null,
     ) {
         $this->classInspector = $classInspector ?? new ClassDesignInspector();
         $this->classMetricsInspector = $classMetricsInspector ?? new ClassMetricsInspector();
         $this->cohesionInspector = $cohesionInspector ?? new CohesionInspector();
         $this->methodInspector = $methodInspector ?? new MethodDesignInspector();
+        $this->rawReportWriter = $rawReportWriter ?? new RawReportWriter();
     }
 
     public function name(): string
@@ -82,11 +86,22 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         }
 
         $metrics = array_replace($metrics, $couplingInspector->metrics());
+        $dependencyGraph = $couplingInspector->graph();
+        $dependencyGraphJson = json_encode(
+            $dependencyGraph,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
+        );
+        $dependencyGraphPath = $this->rawReportWriter->write(
+            $target,
+            'php-structure-dependency-graph',
+            $dependencyGraphJson . PHP_EOL,
+        );
 
         return new AnalyzerResult(
             analyzer: $this->name(),
             findings: $findings,
             metrics: $metrics,
+            rawReportReferences: [$dependencyGraphPath],
         );
     }
 

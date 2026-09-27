@@ -31,5 +31,23 @@ final class PhpStructureAnalyzerTest extends TestCase
         self::assertSame(2, $result->metrics['maxFanIn']);
         self::assertSame(2, $result->metrics['maxInheritanceDepth']);
         self::assertCount(0, $result->findings);
+        self::assertCount(1, $result->rawReportReferences);
+
+        $graphJson = file_get_contents($result->rawReportReferences[0]);
+        self::assertIsString($graphJson);
+        $graph = json_decode($graphJson, true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($graph);
+        self::assertIsArray($graph['nodes'] ?? null);
+        self::assertCount(6, $graph['nodes']);
+
+        $leafNodes = array_values(array_filter(
+            $graph['nodes'],
+            static fn(mixed $node): bool => is_array($node) && 'Fixture\\Coupling\\LeafService' === ($node['class'] ?? null),
+        ));
+        self::assertCount(1, $leafNodes);
+        self::assertSame(3, $leafNodes[0]['fanOut']);
+        self::assertSame(0, $leafNodes[0]['fanIn']);
+        self::assertSame(2, $leafNodes[0]['inheritanceDepth']);
+        self::assertSame([], $leafNodes[0]['externalDependencies']);
     }
 }

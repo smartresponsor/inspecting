@@ -13,7 +13,7 @@ As of the current master baseline:
 - Phase 0: complete.
 - Phase 1: substantially complete; normalized Finding, InspectionReport, InspectionSummary, analyzer result contract, JSON CLI output, and fixture-driven tests are implemented. A dedicated reusable process abstraction remains optional cleanup because Symfony Process is currently encapsulated inside adapters.
 - Phase 2: PHPStan and Rector adapters are active. Semgrep JSON support is implemented as an optional local analyzer with deterministic config discovery: explicit config, project `config/semgrep/`, project root Semgrep config, then the Inspecting-owned `config/semgrep/` fallback. The baseline remains local/SaaS-free and skips Semgrep only when the executable is unavailable. Normalized report persistence is implemented under `.inspecting/reports`; accepted analyzer JSON payloads are persisted separately under `.inspecting/raw/<target>/` and surfaced through `rawReportReferences`.
-- Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, property-cohesion groups, project-level fan-out/fan-in, and inheritance depth. Fan-out includes resolved class-like dependencies referenced by a class; fan-in counts incoming references from classes inside the inspected project.
+- Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, property-cohesion groups, project-level fan-out/fan-in, and inheritance depth. Fan-out includes resolved class-like dependencies referenced by a class; fan-in counts incoming references from classes inside the inspected project. Each native inspection also persists a deterministic project dependency-graph artifact with per-class parent, fan-in/fan-out, inheritance depth, and internal/external dependency lists.
 - Phase 4: active. Current native SOLID/smell rules cover SRP collaborator overload, SRP low property cohesion, OCP repeated type dispatch, ISP oversized interfaces, DIP service locator, large class/public API, long methods, and high complexity.
 - Phase 5: substantially complete. `inspect <target>` emits stable machine-readable JSON with compact consumer summaries, and Console MCP exposes atomic `quality.status`, `quality.inspect`, `quality.report`, and `quality.findings` tools over the standalone engine. Report lifecycle/latest-report convenience remains optional follow-up.
 - Phase 6: not started as a formal calibration phase. One local calibration run against Gating has already demonstrated real findings without changing thresholds.
@@ -29,7 +29,7 @@ Quality discipline:
 
 Next implementation slice:
 
-1. richer project dependency-graph outputs and calibration before introducing coupling thresholds;
+1. calibrate dependency-graph evidence across representative repositories before introducing any coupling thresholds;
 2. broader calibration across representative repositories before adding more heuristics;
 3. expand the Inspecting-owned Semgrep rule pack only from calibrated, low-noise rules;
 4. report lifecycle/latest-report lookup if repeated consumer usage justifies it;

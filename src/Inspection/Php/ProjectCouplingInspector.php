@@ -61,31 +61,109 @@ final class ProjectCouplingInspector
      */
     public function metrics(): array
     {
+        $nodes = $this->graph()['nodes'];
+
+        return [
+            'maxFanOut' => $this->maxNodeMetric($nodes, 'fanOut'),
+            'maxFanIn' => $this->maxNodeMetric($nodes, 'fanIn'),
+            'maxInheritanceDepth' => $this->maxNodeMetric($nodes, 'inheritanceDepth'),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     nodes:list<array{
+     *         class:string,
+     *         parent:string|null,
+     *         fanOut:int,
+     *         fanIn:int,
+     *         inheritanceDepth:int,
+     *         dependencies:list<string>,
+     *         internalDependencies:list<string>,
+     *         externalDependencies:list<string>
+     *     }>
+     * }
+     */
+    public function graph(): array
+    {
         $knownClasses = array_fill_keys(array_keys($this->dependencies), true);
-        $fanIn = array_fill_keys(array_keys($this->dependencies), 0);
-        $maxFanOut = 0;
+        $fanIn = $this->fanIn($knownClasses);
+        $nodes = [];
 
-        foreach ($this->dependencies as $class => $dependencies) {
-            unset($dependencies[$class]);
-            $maxFanOut = max($maxFanOut, count($dependencies));
+        foreach ($this->dependencies as $class => $references) {
+            $dependencies = array_keys($references);
+            sort($dependencies);
+            $internalDependencies = array_values(array_filter(
+                $dependencies,
+                static fn(string $dependency): bool => isset($knownClasses[$dependency]),
+            ));
+            $externalDependencies = array_values(array_filter(
+                $dependencies,
+                static fn(string $dependency): bool => !isset($knownClasses[$dependency]),
+            ));
 
-            foreach (array_keys($dependencies) as $dependency) {
-                if (isset($knownClasses[$dependency])) {
+            $nodes[] = [
+                'class' => $class,
+                'parent' => $this->parents[$class] ?? null,
+                'fanOut' => count($dependencies),
+                'fanIn' => $fanIn[$class] ?? 0,
+                'inheritanceDepth' => $this->inheritanceDepth($class),
+                'dependencies' => $dependencies,
+                'internalDependencies' => $internalDependencies,
+                'externalDependencies' => $externalDependencies,
+            ];
+        }
+
+        usort(
+            $nodes,
+            static fn(array $left, array $right): int => $left['class'] <=> $right['class'],
+        );
+
+        return ['nodes' => $nodes];
+    }
+
+    /**
+     * @param array<string, true> $knownClasses
+     *
+     * @return array<string, int>
+     */
+    private function fanIn(array $knownClasses): array
+    {
+        $fanIn = array_fill_keys(array_keys($knownClasses), 0);
+
+        foreach ($this->dependencies as $class => $references) {
+            foreach (array_keys($references) as $dependency) {
+                if ($dependency !== $class && isset($knownClasses[$dependency])) {
                     ++$fanIn[$dependency];
                 }
             }
         }
 
-        $maxInheritanceDepth = 0;
-        foreach (array_keys($this->parents) as $class) {
-            $maxInheritanceDepth = max($maxInheritanceDepth, $this->inheritanceDepth($class));
+        return $fanIn;
+    }
+
+    /**
+     * @param list<array{
+     *     class:string,
+     *     parent:string|null,
+     *     fanOut:int,
+     *     fanIn:int,
+     *     inheritanceDepth:int,
+     *     dependencies:list<string>,
+     *     internalDependencies:list<string>,
+     *     externalDependencies:list<string>
+     * }> $nodes
+     * @param 'fanOut'|'fanIn'|'inheritanceDepth' $metric
+     */
+    private function maxNodeMetric(array $nodes, string $metric): int
+    {
+        $max = 0;
+
+        foreach ($nodes as $node) {
+            $max = max($max, $node[$metric]);
         }
 
-        return [
-            'maxFanOut' => $maxFanOut,
-            'maxFanIn' => [] === $fanIn ? 0 : max($fanIn),
-            'maxInheritanceDepth' => $maxInheritanceDepth,
-        ];
+        return $max;
     }
 
     private function collectClass(Class_ $class): void
