@@ -16,6 +16,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         private ?string $config = null,
         private RawReportWriter $rawReportWriter = new RawReportWriter(),
         private SemgrepConfigResolver $configResolver = new SemgrepConfigResolver(),
+        private float $timeoutSeconds = 60.0,
     ) {}
 
     public function name(): string
@@ -43,7 +44,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         $command[] = $target . DIRECTORY_SEPARATOR . 'src';
 
         $process = new Process($command, $target);
-        $process->setTimeout(300.0);
+        $process->setTimeout($this->timeoutSeconds);
 
         try {
             $process->run();
