@@ -21,4 +21,15 @@ final class PhpStructureAnalyzerTest extends TestCase
         self::assertSame('solid.srp.excessive-constructor-dependencies', $result->findings[0]->rule);
         self::assertSame(9, $result->findings[0]->evidence['dependencyCount']);
     }
+
+    public function testItReportsProjectCouplingAndInheritanceMetrics(): void
+    {
+        $target = __DIR__ . '/../Fixture/Coupling';
+        $result = (new PhpStructureAnalyzer())->inspect($target);
+
+        self::assertSame(3, $result->metrics['maxFanOut']);
+        self::assertSame(2, $result->metrics['maxFanIn']);
+        self::assertSame(2, $result->metrics['maxInheritanceDepth']);
+        self::assertCount(0, $result->findings);
+    }
 }

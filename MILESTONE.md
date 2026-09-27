@@ -13,7 +13,7 @@ As of the current master baseline:
 - Phase 0: complete.
 - Phase 1: substantially complete; normalized Finding, InspectionReport, InspectionSummary, analyzer result contract, JSON CLI output, and fixture-driven tests are implemented. A dedicated reusable process abstraction remains optional cleanup because Symfony Process is currently encapsulated inside adapters.
 - Phase 2: PHPStan and Rector adapters are active. Semgrep JSON support is implemented as an optional local analyzer and is skipped when a repository has no local Semgrep configuration or binary. Normalized report persistence is implemented under `.inspecting/reports`; raw analyzer report references remain pending.
-- Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, and property-cohesion groups. Coupling/fan-in/fan-out and inheritance-depth metrics remain.
+- Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, property-cohesion groups, project-level fan-out/fan-in, and inheritance depth. Fan-out includes resolved class-like dependencies referenced by a class; fan-in counts incoming references from classes inside the inspected project.
 - Phase 4: active. Current native SOLID/smell rules cover SRP collaborator overload, SRP low property cohesion, OCP repeated type dispatch, ISP oversized interfaces, DIP service locator, large class/public API, long methods, and high complexity.
 - Phase 5: partially complete. `inspect <target>` emits stable machine-readable JSON with compact consumer summaries. Console MCP-specific execution/read tools and persisted report paths remain.
 - Phase 6: not started as a formal calibration phase. One local calibration run against Gating has already demonstrated real findings without changing thresholds.
@@ -29,10 +29,10 @@ Quality discipline:
 
 Next implementation slice:
 
-1. coupling/fan-out and inheritance-depth metrics;
-2. persisted raw/normalized report artifacts;
-3. configurable local Semgrep rule-pack discovery;
-4. Console MCP consumer integration;
+1. persisted raw analyzer report artifacts/references;
+2. configurable local Semgrep rule-pack discovery;
+3. Console MCP consumer integration;
+4. richer project dependency-graph outputs and calibration before introducing coupling thresholds;
 5. broader calibration across representative repositories before adding more heuristics.
 
 ## Architectural position

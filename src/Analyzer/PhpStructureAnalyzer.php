@@ -9,11 +9,14 @@ use App\Inspection\Php\ClassDesignInspector;
 use App\Inspection\Php\ClassMetricsInspector;
 use App\Inspection\Php\CohesionInspector;
 use App\Inspection\Php\MethodDesignInspector;
+use App\Inspection\Php\ProjectCouplingInspector;
 use PhpParser\Error;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Interface_;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
@@ -51,8 +54,9 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         }
 
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $couplingInspector = new ProjectCouplingInspector();
         $findings = [];
-        /** @var array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics */
+        /** @var array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics */
         $metrics = [
             'files' => 0,
             'classes' => 0,
@@ -62,6 +66,9 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
             'maxConstructorDependencies' => 0,
             'maxImplementedInterfaces' => 0,
             'inheritedClasses' => 0,
+            'maxFanOut' => 0,
+            'maxFanIn' => 0,
+            'maxInheritanceDepth' => 0,
         ];
 
         $iterator = new \RecursiveIteratorIterator(
@@ -70,9 +77,11 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
         foreach ($iterator as $fileInfo) {
             if ($fileInfo instanceof \SplFileInfo && $fileInfo->isFile() && 'php' === strtolower($fileInfo->getExtension())) {
-                $this->inspectFile($parser, $target, $fileInfo, $findings, $metrics);
+                $this->inspectFile($parser, $couplingInspector, $target, $fileInfo, $findings, $metrics);
             }
         }
+
+        $metrics = array_replace($metrics, $couplingInspector->metrics());
 
         return new AnalyzerResult(
             analyzer: $this->name(),
@@ -83,10 +92,11 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
     /**
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectFile(
         Parser $parser,
+        ProjectCouplingInspector $couplingInspector,
         string $target,
         \SplFileInfo $fileInfo,
         array &$findings,
@@ -119,14 +129,18 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         }
 
         if (null !== $nodes) {
-            $this->inspectNodes(array_values($nodes), $relativeFile, $findings, $metrics);
+            $traverser = new NodeTraverser();
+            $traverser->addVisitor(new NameResolver(null, ['preserveOriginalNames' => true]));
+            $resolvedNodes = array_values($traverser->traverse(array_values($nodes)));
+            $couplingInspector->collect($resolvedNodes);
+            $this->inspectNodes($resolvedNodes, $relativeFile, $findings, $metrics);
         }
     }
 
     /**
      * @param list<Node> $nodes
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectNodes(array $nodes, string $file, array &$findings, array &$metrics): void
     {
@@ -158,7 +172,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
     /**
      * @param list<Finding> $findings
-     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int} $metrics
+     * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectClass(Class_ $class, string $file, array &$findings, array &$metrics): void
     {
