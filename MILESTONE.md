@@ -6,6 +6,35 @@ Build a self-hosted, CLI-first inspection layer that covers the majority of the 
 
 The milestone is intentionally focused on PHP 8.4 and Symfony-oriented repositories. JavaScript, SQL, dashboards, and broad IDE replacement are out of scope.
 
+## Current status
+
+As of the current master baseline:
+
+- Phase 0: complete.
+- Phase 1: substantially complete; normalized Finding, InspectionReport, InspectionSummary, analyzer result contract, JSON CLI output, and fixture-driven tests are implemented. A dedicated reusable process abstraction remains optional cleanup because Symfony Process is currently encapsulated inside adapters.
+- Phase 2: PHPStan and Rector adapters are active. Semgrep JSON support is implemented as an optional local analyzer and is skipped when a repository has no local Semgrep configuration or binary. Raw-report reference persistence is still pending.
+- Phase 3: active. Native metrics already cover class/method size, constructor object dependencies, public API size, interface size, cyclomatic complexity, repeated polymorphic type dispatch, and property-cohesion groups. Coupling/fan-in/fan-out and inheritance-depth metrics remain.
+- Phase 4: active. Current native SOLID/smell rules cover SRP collaborator overload, SRP low property cohesion, OCP repeated type dispatch, ISP oversized interfaces, DIP service locator, large class/public API, long methods, and high complexity.
+- Phase 5: partially complete. `inspect <target>` emits stable machine-readable JSON with compact consumer summaries. Console MCP-specific execution/read tools and persisted report paths remain.
+- Phase 6: not started as a formal calibration phase. One local calibration run against Gating has already demonstrated real findings without changing thresholds.
+
+Quality discipline:
+
+- PHPStan remains at `--level=max`.
+- Native thresholds are not raised to make self-scan green.
+- True-positive findings are fixed in code.
+- False positives are corrected by making the rule more semantically precise.
+- Rector deterministic findings are fixed rather than suppressed.
+- The executable composition root is included in PHPStan analysis.
+
+Next implementation slice:
+
+1. coupling/fan-out and inheritance-depth metrics;
+2. persisted raw/normalized report artifacts;
+3. configurable local Semgrep rule-pack discovery;
+4. Console MCP consumer integration;
+5. broader calibration across representative repositories before adding more heuristics.
+
 ## Architectural position
 
 ```text
