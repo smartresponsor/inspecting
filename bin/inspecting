@@ -8,6 +8,7 @@ use App\Analyzer\PhpStructureAnalyzer;
 use App\Analyzer\RectorAnalyzer;
 use App\Analyzer\SemgrepAnalyzer;
 use App\Command\InspectCommand;
+use App\Command\ReportCommand;
 use App\Inspection\Inspector;
 use Symfony\Component\Console\Application;
 
@@ -27,4 +28,5 @@ $application->addCommand(new InspectCommand(new Inspector([
     new RectorAnalyzer(),
     new SemgrepAnalyzer(),
 ])));
+$application->addCommand(new ReportCommand());
 $application->run();
