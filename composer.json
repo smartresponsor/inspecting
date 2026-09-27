@@ -29,3 +29,4 @@
     "test": "phpunit",
     "quality": ["@cs:check", "@phpstan", "@test"]
   }
+}
