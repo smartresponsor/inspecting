@@ -1,0 +1,31 @@
+{
+  "name": "inspecting/engine",
+  "type": "library",
+  "description": "Standalone PHP quality-inspection engine for SOLID, code-smell and maintainability analysis.",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.4",
+    "symfony/console": "^8.1",
+    "symfony/process": "^8.1"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.95",
+    "phpstan/phpstan": "^2.2",
+    "phpunit/phpunit": "^13.3",
+    "rector/rector": "^2.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "bin": [
+    "bin/inspecting"
+  ],
+  "scripts": {
+    "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
+    "cs:fix": "php-cs-fixer fix --verbose",
+    "phpstan": "phpstan analyse src tests --level=max",
+    "test": "phpunit",
+    "quality": ["@cs:check", "@phpstan", "@test"]
+  }

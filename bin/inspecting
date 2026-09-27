@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Symfony\Component\Console\Application;
+
+$autoload = dirname(__DIR__) . '/vendor/autoload.php';
+
+if (!is_file($autoload)) {
+    fwrite(STDERR, "Inspecting dependencies are not installed. Run composer install.\n");
+    exit(2);
+}
+
+require $autoload;
+
+$application = new Application('Inspecting', '0.1.0-dev');
+$application->run();
