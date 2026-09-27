@@ -15,6 +15,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         private string $binary = 'semgrep',
         private ?string $config = null,
         private RawReportWriter $rawReportWriter = new RawReportWriter(),
+        private SemgrepConfigResolver $configResolver = new SemgrepConfigResolver(),
     ) {}
 
     public function name(): string
@@ -29,11 +30,10 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
             $this->binary,
             'scan',
             '--json',
-            '--quiet',
             '--metrics=off',
         ];
 
-        $config = $this->config ?? $this->discoverConfig($target);
+        $config = $this->configResolver->resolve($target, $this->config);
 
         if (null === $config) {
             throw new AnalyzerUnavailable(sprintf('Semgrep is not configured in %s.', $target));
@@ -63,22 +63,6 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         $rawReport = $this->rawReportWriter->write($target, $this->name(), $output);
 
         return $this->parse($output, $rawReport);
-    }
-
-    private function discoverConfig(string $target): ?string
-    {
-        foreach ([
-            $target . DIRECTORY_SEPARATOR . 'semgrep.yml',
-            $target . DIRECTORY_SEPARATOR . 'semgrep.yaml',
-            $target . DIRECTORY_SEPARATOR . '.semgrep.yml',
-            $target . DIRECTORY_SEPARATOR . '.semgrep.yaml',
-        ] as $candidate) {
-            if (is_file($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return null;
     }
 
     private function parse(string $json, string $rawReport): AnalyzerResult

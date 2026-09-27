@@ -1,0 +1,12 @@
+rules:
+  - id: inspecting.php.debug-output
+    message: Debug output call remains in production PHP source.
+    severity: WARNING
+    languages:
+      - php
+    metadata:
+      category: maintainability
+      confidence: "0.95"
+    pattern-either:
+      - pattern: var_dump(...)
+      - pattern: print_r(...)
