@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Analyzer;
 
 use App\Inspection\Finding;
+use App\Inspection\RawReportWriter;
 use Symfony\Component\Process\Process;
 
 final readonly class RectorAnalyzer implements AnalyzerInterface
 {
+    public function __construct(private RawReportWriter $rawReportWriter = new RawReportWriter()) {}
+
     public function name(): string
     {
         return 'rector';
@@ -44,10 +47,28 @@ final readonly class RectorAnalyzer implements AnalyzerInterface
             ));
         }
 
-        return $this->parse($process->getOutput());
+        $output = $process->getOutput();
+        $rawReport = $this->rawReportWriter->write($target, $this->name(), $output);
+
+        return $this->parse($output, $rawReport);
     }
 
-    private function parse(string $json): AnalyzerResult
+    private function parse(string $json, string $rawReport): AnalyzerResult
+    {
+        $data = $this->decode($json);
+
+        return new AnalyzerResult(
+            analyzer: $this->name(),
+            findings: $this->parseFindings($data),
+            metrics: $this->parseTotals($data),
+            rawReportReferences: [$rawReport],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decode(string $json): array
     {
         $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
 
@@ -55,56 +76,81 @@ final readonly class RectorAnalyzer implements AnalyzerInterface
             throw new \UnexpectedValueException('Rector JSON output must decode to an object.');
         }
 
-        $findings = [];
+        foreach (array_keys($data) as $key) {
+            if (!is_string($key)) {
+                throw new \UnexpectedValueException('Rector JSON root keys must be strings.');
+            }
+        }
+
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return list<Finding>
+     */
+    private function parseFindings(array $data): array
+    {
         $fileDiffs = $data['file_diffs'] ?? [];
+        if (!is_array($fileDiffs)) {
+            return [];
+        }
 
-        if (is_array($fileDiffs)) {
-            foreach ($fileDiffs as $fileDiff) {
-                if (!is_array($fileDiff)) {
-                    continue;
-                }
+        $findings = [];
 
-                $file = $fileDiff['file'] ?? null;
-                $rectors = $fileDiff['applied_rectors'] ?? [];
+        foreach ($fileDiffs as $fileDiff) {
+            if (!is_array($fileDiff)) {
+                continue;
+            }
 
-                if (!is_string($file) || !is_array($rectors)) {
-                    continue;
-                }
+            $file = $fileDiff['file'] ?? null;
+            $rectors = $fileDiff['applied_rectors'] ?? [];
+            if (!is_string($file) || !is_array($rectors)) {
+                continue;
+            }
 
-                foreach ($rectors as $rector) {
-                    if (!is_string($rector)) {
-                        continue;
-                    }
-
-                    $findings[] = new Finding(
-                        source: $this->name(),
-                        rule: $rector,
-                        category: 'modernization',
-                        severity: 'medium',
-                        confidence: 1.0,
-                        message: sprintf('Rector would refactor %s using %s.', $file, $rector),
-                        file: $file,
-                        autofixable: true,
-                    );
+            foreach ($rectors as $rector) {
+                if (is_string($rector)) {
+                    $findings[] = $this->finding($file, $rector);
                 }
             }
         }
 
-        $totals = $data['totals'] ?? [];
-        $changedFiles = is_array($totals) && is_int($totals['changed_files'] ?? null)
-            ? $totals['changed_files']
-            : 0;
-        $errors = is_array($totals) && is_int($totals['errors'] ?? null)
-            ? $totals['errors']
-            : 0;
+        return $findings;
+    }
 
-        return new AnalyzerResult(
-            analyzer: $this->name(),
-            findings: $findings,
-            metrics: [
-                'changedFiles' => $changedFiles,
-                'errors' => $errors,
-            ],
+    private function finding(string $file, string $rector): Finding
+    {
+        return new Finding(
+            source: $this->name(),
+            rule: $rector,
+            category: 'modernization',
+            severity: 'medium',
+            confidence: 1.0,
+            message: sprintf('Rector would refactor %s using %s.', $file, $rector),
+            file: $file,
+            autofixable: true,
         );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{changedFiles:int, errors:int}
+     */
+    private function parseTotals(array $data): array
+    {
+        $totals = $data['totals'] ?? [];
+
+        return [
+            'changedFiles' => is_array($totals) && is_int($totals['changed_files'] ?? null)
+                ? $totals['changed_files']
+                : 0,
+            'errors' => is_array($totals) && is_int($totals['errors'] ?? null)
+                ? $totals['errors']
+                : 0,
+        ];
     }
 }

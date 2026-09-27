@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Analyzer;
 
 use App\Inspection\Finding;
+use App\Inspection\RawReportWriter;
 use Symfony\Component\Process\Process;
 
 final readonly class PhpStanAnalyzer implements AnalyzerInterface
 {
+    public function __construct(private RawReportWriter $rawReportWriter = new RawReportWriter()) {}
+
     public function name(): string
     {
         return 'phpstan';
@@ -51,10 +54,13 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
             ));
         }
 
-        return $this->parse($process->getOutput());
+        $output = $process->getOutput();
+        $rawReport = $this->rawReportWriter->write($target, $this->name(), $output);
+
+        return $this->parse($output, $rawReport);
     }
 
-    private function parse(string $json): AnalyzerResult
+    private function parse(string $json, string $rawReport): AnalyzerResult
     {
         $data = $this->decode($json);
         $findings = [
@@ -67,6 +73,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
             analyzer: $this->name(),
             findings: $findings,
             metrics: $totals,
+            rawReportReferences: [$rawReport],
         );
     }
 

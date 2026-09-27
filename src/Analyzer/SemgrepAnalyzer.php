@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Analyzer;
 
 use App\Inspection\Finding;
+use App\Inspection\RawReportWriter;
 use Symfony\Component\Process\Exception\ProcessStartFailedException;
 use Symfony\Component\Process\Process;
 
@@ -13,6 +14,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
     public function __construct(
         private string $binary = 'semgrep',
         private ?string $config = null,
+        private RawReportWriter $rawReportWriter = new RawReportWriter(),
     ) {}
 
     public function name(): string
@@ -57,7 +59,10 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
             ));
         }
 
-        return $this->parse($process->getOutput());
+        $output = $process->getOutput();
+        $rawReport = $this->rawReportWriter->write($target, $this->name(), $output);
+
+        return $this->parse($output, $rawReport);
     }
 
     private function discoverConfig(string $target): ?string
@@ -76,7 +81,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         return null;
     }
 
-    private function parse(string $json): AnalyzerResult
+    private function parse(string $json, string $rawReport): AnalyzerResult
     {
         $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
 
@@ -127,6 +132,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
                 'findings' => count($findings),
                 'engineErrors' => is_array($errors) ? count($errors) : 0,
             ],
+            rawReportReferences: [$rawReport],
         );
     }
 
