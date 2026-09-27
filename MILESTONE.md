@@ -47,7 +47,7 @@ Inspecting
 
 Inspecting is not required to be symmetric with Canonization and must not dilute the Canonization/Gating one-to-one contract.
 
-Inspecting owns observations and normalized findings. A consumer may decide which findings are operationally actionable, but the inspection engine itself is not primarily a gate. The current CanonScanning nightly policy treats `high` and `critical` findings as actionable RED evidence and keeps lower-severity findings as observational telemetry; this actionability policy belongs to the consumer and may be recalibrated without changing analyzer semantics.
+Inspecting owns observations and normalized findings. Individual analyzer runtime failures are isolated and exposed through `analyzerFailures` in the normalized report so one failing adapter cannot discard successful findings from the remaining analyzers. A consumer may decide which findings are operationally actionable, but the inspection engine itself is not primarily a gate. The current CanonScanning nightly policy treats `high` and `critical` findings as actionable RED evidence and keeps lower-severity findings as observational telemetry; this actionability policy belongs to the consumer and may be recalibrated without changing analyzer semantics.
 
 ## Runtime decision
 
