@@ -150,6 +150,180 @@ The milestone must prioritize useful evidence around:
 
 Rules must distinguish deterministic violations from heuristics. Heuristic findings must carry confidence and evidence rather than pretending to be compiler errors.
 
+## Post-calibration native rule backlog
+
+This backlog is intentionally broader than the current implementation. It is not a commitment to implement every rule immediately. It is the preserved inventory of native rule families that should become the continuation plan after representative repository calibration.
+
+The guiding rule is:
+
+```text
+Inspecting finds suspicious shape and evidence.
+Canonization defines forbidden architecture.
+Gating enforces deterministic project rules.
+```
+
+Generic PHP/SOLID rules may become native Inspecting findings directly when they are evidence-backed and low-noise. Symfony-aware rules must be treated more carefully: they should start as evidence collectors or advisory findings unless an explicit Canonization rule makes the architectural expectation project-specific and enforceable.
+
+### Generic PHP/SOLID native rule families
+
+#### Coupling and project graph
+
+- high class fan-out;
+- high class fan-in / dependency hub;
+- namespace-level coupling concentration;
+- cyclic class or namespace dependencies;
+- deep inheritance chain;
+- unstable dependency direction;
+- excessive concrete dependencies where abstractions are available;
+- central coordinator / god-service shape.
+
+These rules must be calibrated against the existing dependency-graph artifact before thresholds are introduced.
+
+#### SRP and cohesion
+
+- low dependency cohesion: methods use disjoint constructor dependency groups;
+- unrelated public method clusters;
+- constructor dependencies used by only one method each;
+- class touching too many external domain/namespace groups;
+- mixed abstraction levels inside a class;
+- class combining coordination, persistence, IO, and domain policy without a clear boundary.
+
+These should extend the existing property-cohesion rule rather than replacing it.
+
+#### OCP and polymorphism
+
+- repeated `switch`/`match` on type or discriminator;
+- repeated string-enum branching across methods or classes;
+- repeated class-name comparisons;
+- parallel conditional hierarchies;
+- factory conditionals that grow with each new concrete type.
+
+The existing repeated-`instanceof` rule is only the first OCP slice.
+
+#### DIP and hidden dependencies
+
+- direct construction of infrastructure dependencies inside high-level policy classes;
+- static service access / global registry access;
+- hidden dependency acquisition inside method bodies;
+- hard-coded concrete implementations where a stable abstraction exists nearby;
+- environment, filesystem, process, clock, random, or network access inside core/domain services without explicit dependency boundaries.
+
+Value objects, DTOs, criteria objects, commands, and simple local data structures must not be treated as DIP violations merely because they are constructed with `new`.
+
+#### Interface and contract quality
+
+- interface with unrelated method groups;
+- oversized interface already covered, but should gain cohesion evidence;
+- implementation classes using only a small portion of an interface;
+- marker interfaces without clear usage;
+- abstract classes with little shared behavior;
+- contracts exposing implementation-detail naming.
+
+These findings are advisory by default because some project-level marker/contract patterns may be intentional.
+
+#### Exception and error handling
+
+- swallowed exceptions;
+- broad `catch (Throwable)` without rethrow, logging, wrapping, or evidence;
+- generic exception messages without operational/domain context;
+- boolean failure return in non-trivial operations where explicit result/exception would preserve evidence;
+- exception translation that loses previous exception/context.
+
+#### Mutability and temporal coupling
+
+- mutable service state;
+- setter injection in services;
+- public mutable properties in service-like classes;
+- temporal coupling where callers must invoke methods in a hidden order;
+- accumulator-like services that retain cross-call state.
+
+Entity/DTO/value-object mutability must be classified separately from service mutability.
+
+#### Testability and external effects
+
+- hard-coded time/date/randomness;
+- direct filesystem/process/network access in policy or domain services;
+- direct static calls to external-effect helpers in core logic;
+- hidden IO dependency not visible in constructor/method contract;
+- code paths that cannot be exercised without real external resources.
+
+These rules should be especially useful for AI-assisted remediation because they point to dependency extraction opportunities.
+
+#### Suspicious dead or pass-through design
+
+- unused private method clusters not already caught by PHPStan;
+- protected methods with no subclass evidence;
+- abstract extension points never used inside the project;
+- pass-through wrappers with no policy, normalization, logging, or boundary value;
+- classes that only forward to one dependency while adding no domain meaning.
+
+Avoid duplicating PHPStan dead-code findings; focus on design-level shapes.
+
+#### Naming and semantic-shape smells
+
+- vague `Manager`, `Helper`, `Util`, or `Processor` god-name candidates;
+- method names that encode multiple responsibilities such as `loadAndValidateAndPersistAndNotify`;
+- class names that conflict with observed dependency/method shape.
+
+This group is intentionally low priority and should remain advisory because naming rules are noisy.
+
+### Symfony-aware evidence backlog
+
+The first Symfony-aware layer should be evidence-first, not verdict-first. Do not encode generic internet/PhpStorm/Symfony best-practice opinions as project law inside Inspecting.
+
+Safe evidence collectors:
+
+- classify likely Controllers, Console Commands, Event Subscribers, Repositories, Doctrine entities, Form types, message handlers, and framework adapters;
+- collect constructor dependency count and namespace groups per framework role;
+- collect public action/handler method counts;
+- collect EntityManager, Connection, ContainerInterface, RequestStack, filesystem, process, clock, network, and messenger usage concentration;
+- collect framework-boundary crossings such as controller-to-persistence, command-to-HTTP, repository-to-service, or subscriber-to-unrelated-domain patterns;
+- collect per-role fan-in/fan-out and coordination-load metrics.
+
+Potential advisory Symfony-aware findings after calibration:
+
+- controller high coordination load;
+- command high coordination load;
+- event subscriber multi-event responsibility;
+- repository mixed persistence and unrelated domain/service work;
+- handler with excessive external effects;
+- service container coupling;
+- EntityManager concentration outside intended persistence boundaries;
+- form type with high domain/service coordination;
+- framework adapter leaking into core/domain namespace;
+- Doctrine entity with suspicious infrastructure dependency.
+
+These names should describe observed shape, not declare architecture illegality. A message such as `Controller coordinates many unrelated dependencies` is acceptable. A message such as `Controller violates our architecture` belongs only to a canon-backed rule.
+
+### Canonization boundary for Symfony rules
+
+Symfony-aware findings become enforceable only when backed by explicit Canonization/Gating rules. Until then they are evidence or advisory design findings.
+
+Examples of boundaries that belong to Canonization/Gating rather than generic Inspecting:
+
+- whether controllers must be thin;
+- whether repositories may contain domain logic;
+- whether actions, handlers, or services are the preferred application-service shape;
+- whether Doctrine entities may contain behavior;
+- whether specific Symfony component roles are allowed in a namespace;
+- whether a specific service naming or directory convention is mandatory.
+
+Inspecting may collect the facts needed to evaluate these policies, but the policy itself must remain canon-owned.
+
+### Implementation order after calibration
+
+Preferred order after the current calibration pass:
+
+1. calibrate project graph evidence and add fan-in/fan-out thresholds only where low-noise;
+2. add dependency-cohesion SRP rules;
+3. add `switch`/`match` discriminator OCP rules;
+4. add hidden dependency and external-effect DIP/testability rules;
+5. add interface-cohesion and partial-interface-usage evidence;
+6. add exception/error-handling smells;
+7. add Symfony-aware evidence collectors;
+8. map selected Symfony evidence to Canonization-backed rules only after the canon is explicit;
+9. keep naming/semantic-shape smells last unless calibration shows high value.
+
 ## Delivery phases
 
 ### Phase 0 — Foundation
