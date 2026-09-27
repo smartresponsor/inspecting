@@ -26,6 +26,7 @@
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
     "phpstan": "phpstan analyse src tests --level=max",
+    "inspect:self": "@php bin/inspecting inspect .",
     "test": "phpunit",
     "quality": ["@cs:check", "@phpstan", "@test"]
   }
