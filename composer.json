@@ -5,6 +5,7 @@
   "license": "proprietary",
   "require": {
     "php": "^8.4",
+    "nikic/php-parser": "^5.9",
     "symfony/console": "^8.1",
     "symfony/process": "^8.1"
   },
@@ -26,6 +27,8 @@
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
     "phpstan": "phpstan analyse src tests --level=max",
+    "rector:check": "rector process --dry-run --config rector.php",
+    "rector:fix": "rector process --config rector.php",
     "inspect:self": "@php bin/inspecting inspect .",
     "test": "phpunit",
     "quality": ["@cs:check", "@phpstan", "@test"]

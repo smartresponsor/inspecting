@@ -4,6 +4,8 @@
 declare(strict_types=1);
 
 use App\Analyzer\PhpStanAnalyzer;
+use App\Analyzer\PhpStructureAnalyzer;
+use App\Analyzer\RectorAnalyzer;
 use App\Command\InspectCommand;
 use App\Inspection\Inspector;
 use Symfony\Component\Console\Application;
@@ -20,5 +22,7 @@ require $autoload;
 $application = new Application('Inspecting', '0.1.0-dev');
 $application->addCommand(new InspectCommand(new Inspector([
     new PhpStanAnalyzer(),
+    new PhpStructureAnalyzer(),
+    new RectorAnalyzer(),
 ])));
 $application->run();
