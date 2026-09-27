@@ -24,6 +24,7 @@ final readonly class Inspector
         $findings = [];
         $metrics = [];
         $rawReportReferences = [];
+        $analyzerFailures = [];
 
         foreach ($this->analyzers as $analyzer) {
             if ([] !== $selectedAnalyzers && !in_array($analyzer->name(), $selectedAnalyzers, true)) {
@@ -33,6 +34,9 @@ final readonly class Inspector
             try {
                 $result = $analyzer->inspect($target);
             } catch (AnalyzerUnavailable) {
+                continue;
+            } catch (\Throwable $failure) {
+                $analyzerFailures[$analyzer->name()] = $failure->getMessage();
                 continue;
             }
 
@@ -54,6 +58,7 @@ final readonly class Inspector
             findings: $findings,
             metrics: $metrics,
             rawReportReferences: $rawReportReferences,
+            analyzerFailures: $analyzerFailures,
         );
     }
 }

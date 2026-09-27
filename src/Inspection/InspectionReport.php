@@ -11,6 +11,7 @@ final readonly class InspectionReport implements \JsonSerializable
      * @param list<Finding> $findings
      * @param array<string, int|float|string|bool|null> $metrics
      * @param list<string> $rawReportReferences
+     * @param array<string, string> $analyzerFailures
      */
     public function __construct(
         public string $target,
@@ -20,6 +21,7 @@ final readonly class InspectionReport implements \JsonSerializable
         public array $findings,
         public array $metrics = [],
         public array $rawReportReferences = [],
+        public array $analyzerFailures = [],
     ) {
         if ($finishedAt < $startedAt) {
             throw new \InvalidArgumentException('finishedAt cannot precede startedAt.');
@@ -35,7 +37,8 @@ final readonly class InspectionReport implements \JsonSerializable
      *     findings: list<Finding>,
      *     metrics: array<string, int|float|string|bool|null>,
      *     summary: InspectionSummary,
-     *     rawReportReferences: list<string>
+     *     rawReportReferences: list<string>,
+     *     analyzerFailures: array<string, string>
      * }
      */
     public function jsonSerialize(): array
@@ -49,6 +52,7 @@ final readonly class InspectionReport implements \JsonSerializable
             'metrics' => $this->metrics,
             'summary' => InspectionSummary::fromFindings($this->findings),
             'rawReportReferences' => $this->rawReportReferences,
+            'analyzerFailures' => $this->analyzerFailures,
         ];
     }
 }

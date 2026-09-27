@@ -11,6 +11,38 @@ use PHPUnit\Framework\TestCase;
 
 final class InspectorTest extends TestCase
 {
+    public function testItIsolatesAnalyzerFailures(): void
+    {
+        $failing = new class implements AnalyzerInterface {
+            public function name(): string
+            {
+                return 'failing';
+            }
+
+            public function inspect(string $target): AnalyzerResult
+            {
+                throw new \RuntimeException('synthetic analyzer failure');
+            }
+        };
+        $healthy = new class implements AnalyzerInterface {
+            public function name(): string
+            {
+                return 'healthy';
+            }
+
+            public function inspect(string $target): AnalyzerResult
+            {
+                return new AnalyzerResult('healthy', [], ['value' => 7]);
+            }
+        };
+
+        $report = (new Inspector([$failing, $healthy]))->inspect(__DIR__);
+
+        self::assertSame(['healthy'], $report->analyzers);
+        self::assertSame(['healthy.value' => 7], $report->metrics);
+        self::assertSame(['failing' => 'synthetic analyzer failure'], $report->analyzerFailures);
+    }
+
     public function testItCanSelectAnalyzersExplicitly(): void
     {
         $first = new class implements AnalyzerInterface {
