@@ -11,3 +11,7 @@ composer.lock
 .DS_Store
 Thumbs.db
 Desktop.ini
+/node_modules/
+/test-results/
+/playwright-report/
+/config/reference.php

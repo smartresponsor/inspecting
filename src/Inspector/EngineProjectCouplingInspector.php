@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection\Php;
+namespace App\Inspecting\Inspector;
 
 use PhpParser\Node;
 use PhpParser\Node\ComplexType;
@@ -21,7 +21,10 @@ use PhpParser\Node\Stmt\Property;
 use PhpParser\Node\Stmt\TraitUse;
 use PhpParser\Node\UnionType;
 
-final class ProjectCouplingInspector
+/**
+ * Collects project-wide class dependencies and inheritance relationships to calculate coupling metrics and graph evidence.
+ */
+final class EngineProjectCouplingInspector
 {
     /** @var array<string, array<string, true>> */
     private array $dependencies = [];
@@ -30,6 +33,8 @@ final class ProjectCouplingInspector
     private array $parents = [];
 
     /**
+ * Collects class dependency and inheritance relationships from parsed PHP nodes for project-wide coupling analysis.
+ *
      * @param list<Node> $nodes
      */
     public function collect(array $nodes): void
@@ -57,6 +62,8 @@ final class ProjectCouplingInspector
     }
 
     /**
+ * Returns aggregate coupling and inheritance metrics computed from the dependency graph collected for the inspected project.
+ *
      * @return array{maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int}
      */
     public function metrics(): array
@@ -71,6 +78,8 @@ final class ProjectCouplingInspector
     }
 
     /**
+ * Builds a deterministic dependency graph containing internal and external edges, fan-in, fan-out, parent, and inheritance-depth data.
+ *
      * @return array{
      *     nodes:list<array{
      *         class:string,

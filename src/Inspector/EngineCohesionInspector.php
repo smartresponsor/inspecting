@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection\Php;
+namespace App\Inspecting\Inspector;
 
-use App\Inspection\Finding;
+use App\Inspecting\ValueObject\EngineFinding;
 use PhpParser\Node;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\Variable;
@@ -12,13 +12,18 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 
-final readonly class CohesionInspector
+/**
+ * Evaluates method-to-property relationships inside a parsed class to detect low-cohesion structures and fragmented responsibilities.
+ */
+final readonly class EngineCohesionInspector
 {
     private const int MIN_PARTICIPATING_METHODS = 4;
     private const int COMPONENT_THRESHOLD = 3;
 
     /**
-     * @return list<Finding>
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ *
+     * @return list<EngineFinding>
      */
     public function inspect(Class_ $class, string $file): array
     {
@@ -56,7 +61,7 @@ final readonly class CohesionInspector
 
         $className = $class->name?->toString() ?? 'anonymous';
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'solid.srp.low-property-cohesion',
             category: 'design',

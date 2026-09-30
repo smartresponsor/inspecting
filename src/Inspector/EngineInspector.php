@@ -2,22 +2,28 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\Inspector;
 
-use App\Analyzer\AnalyzerInterface;
-use App\Analyzer\AnalyzerUnavailable;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\Exception\EngineAnalyzerUnavailable;
+use App\Inspecting\ValueObject\EngineInspectionReport;
 
-final readonly class Inspector
+/**
+ * Coordinates selected analyzers, isolates analyzer failures, and aggregates normalized findings, metrics, and raw evidence into one report.
+ */
+final readonly class EngineInspector
 {
     /**
-     * @param list<AnalyzerInterface> $analyzers
+     * @param list<EngineAnalyzerInterface> $analyzers
      */
     public function __construct(private array $analyzers) {}
 
     /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ *
      * @param list<string> $selectedAnalyzers
      */
-    public function inspect(string $target, array $selectedAnalyzers = []): InspectionReport
+    public function inspect(string $target, array $selectedAnalyzers = []): EngineInspectionReport
     {
         $startedAt = new \DateTimeImmutable();
         $names = [];
@@ -33,7 +39,7 @@ final readonly class Inspector
 
             try {
                 $result = $analyzer->inspect($target);
-            } catch (AnalyzerUnavailable) {
+            } catch (EngineAnalyzerUnavailable) {
                 continue;
             } catch (\Throwable $failure) {
                 $analyzerFailures[$analyzer->name()] = $failure->getMessage();
@@ -50,7 +56,7 @@ final readonly class Inspector
             array_push($rawReportReferences, ...$result->rawReportReferences);
         }
 
-        return new InspectionReport(
+        return new EngineInspectionReport(
             target: $target,
             startedAt: $startedAt,
             finishedAt: new \DateTimeImmutable(),

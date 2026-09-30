@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\ValueObject;
 
-final readonly class InspectionSummary implements \JsonSerializable
+/**
+ * Aggregates normalized findings into stable counts by severity, category, source, and autofixability for report consumers.
+ */
+final readonly class EngineInspectionSummary implements \JsonSerializable
 {
     /**
      * @param array<string, int> $bySeverity
@@ -20,7 +23,9 @@ final readonly class InspectionSummary implements \JsonSerializable
     ) {}
 
     /**
-     * @param list<Finding> $findings
+ * Builds an aggregate inspection summary by counting findings across severity, category, source, and autofixability dimensions.
+ *
+     * @param list<EngineFinding> $findings
      */
     public static function fromFindings(array $findings): self
     {
@@ -53,6 +58,8 @@ final readonly class InspectionSummary implements \JsonSerializable
     }
 
     /**
+ * Serializes this inspection value into the stable array shape consumed by JSON reports and downstream automation.
+ *
      * @return array{
      *     findingCount: int,
      *     autofixableCount: int,

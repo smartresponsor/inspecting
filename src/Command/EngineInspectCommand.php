@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Command;
+namespace App\Inspecting\Command;
 
-use App\Inspection\Inspector;
-use App\Inspection\ReportWriter;
+use App\Inspecting\Inspector\EngineInspector;
+use App\Inspecting\Writer\EngineReportWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -14,15 +14,21 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'inspect', description: 'Inspect a PHP repository and emit a normalized JSON report.')]
-final class InspectCommand extends Command
+/**
+ * Provides the primary Inspecting CLI workflow for analyzer selection, repository inspection, normalized report persistence, and JSON output.
+ */
+final class EngineInspectCommand extends Command
 {
     public function __construct(
-        private readonly Inspector $inspector,
-        private readonly ReportWriter $reportWriter = new ReportWriter(),
+        private readonly EngineInspector $inspector,
+        private readonly EngineReportWriter $reportWriter = new EngineReportWriter(),
     ) {
         parent::__construct();
     }
 
+    /**
+ * Configures the command name, arguments, options, description, and help metadata exposed through Symfony Console.
+ */
     protected function configure(): void
     {
         $this->addArgument('target', InputArgument::REQUIRED, 'Repository path to inspect.');
@@ -34,6 +40,9 @@ final class InspectCommand extends Command
         );
     }
 
+    /**
+ * Executes the configured console workflow and returns the Symfony command exit status produced by the inspection or reporting operation.
+ */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $target = $input->getArgument('target');

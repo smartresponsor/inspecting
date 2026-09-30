@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\ValueObject;
 
-final readonly class Finding implements \JsonSerializable
+/**
+ * Represents one normalized inspection finding with source, rule, severity, confidence, location, evidence, and remediation metadata.
+ */
+final readonly class EngineFinding implements \JsonSerializable
 {
     /**
      * @param array<string, scalar|array<array-key, scalar|null>|null> $evidence
@@ -29,6 +32,8 @@ final readonly class Finding implements \JsonSerializable
     }
 
     /**
+ * Serializes this inspection value into the stable array shape consumed by JSON reports and downstream automation.
+ *
      * @return array{
      *     source: string,
      *     rule: string,

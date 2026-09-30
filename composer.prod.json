@@ -1,24 +1,40 @@
 {
   "name": "inspecting/engine",
-  "type": "library",
+  "type": "symfony-bundle",
   "description": "Standalone PHP quality-inspection engine for SOLID, code-smell and maintainability analysis.",
   "license": "proprietary",
   "require": {
     "php": "^8.4",
     "nikic/php-parser": "^5.9",
     "symfony/console": "^8.1",
-    "symfony/process": "^8.1"
+    "symfony/process": "^8.1",
+    "collectioning/collection": "dev-master",
+    "cruding/crud": "dev-master",
+    "easycorp/easyadmin-bundle": "^5.5",
+    "failing/failure": "dev-master",
+    "interfacing/interface": "dev-master",
+    "objecting/object": "dev-master",
+    "tabling/table": "dev-master",
+    "viewing/view": "dev-master",
+    "symfony/config": "^8.1",
+    "symfony/dependency-injection": "^8.1",
+    "symfony/framework-bundle": "^8.1",
+    "symfony/http-kernel": "^8.1",
+    "symfony/yaml": "^8.1"
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.95",
     "gating/gate": "dev-master",
     "phpstan/phpstan": "^2.2",
     "phpunit/phpunit": "^13.3",
-    "rector/rector": "^2.4"
+    "rector/rector": "^2.4",
+    "symfony/browser-kit": "^8.1",
+    "symfony/css-selector": "^8.1",
+    "symfony/panther": "^2.4"
   },
   "autoload": {
     "psr-4": {
-      "App\\": "src/"
+      "App\\Inspecting\\": "src/"
     }
   },
   "bin": [
@@ -34,10 +50,18 @@
     "test": "phpunit",
     "test:coverage": [
       "@php -r \"if (!is_dir('var/coverage')) { mkdir('var/coverage', 0777, true); }\"",
-      "@php -d xdebug.mode=coverage vendor/bin/phpunit --path-coverage --coverage-text=var/coverage/summary.txt"
+      "@php -d xdebug.mode=coverage vendor/bin/phpunit --path-coverage --coverage-text=var/coverage/summary.txt --coverage-clover=var/coverage/clover.xml"
     ],
-    "gate": "@php vendor/bin/gating check --target=.",
-    "quality": ["@cs:check", "@phpstan", "@test", "@gate"]
+    "gate": "@php vendor/bin/gating check --target=. --rule-set=vendor/gating/gate/.gating/profile/rule-set/administering.yaml",
+    "quality": [
+      "@cs:check",
+      "@phpstan",
+      "@test",
+      "@gate"
+    ],
+    "test:behavioral-coverage": "@php tool/behavioral-coverage.php",
+    "lint:container": "@php bin/console lint:container",
+    "validate:prod": "composer validate --strict --no-check-all composer.prod.json"
   },
   "minimum-stability": "dev",
   "prefer-stable": true,
@@ -46,6 +70,47 @@
       "type": "vcs",
       "url": "https://github.com/smartresponsor/gating.git",
       "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/cruding.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/collectioning.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/tabling-.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/viewing.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/interfacing.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/objecting.git",
+      "no-api": true
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/smartresponsor/failing.git",
+      "no-api": true
     }
-  ]
+  ],
+  "extra": {
+    "symfony": {
+      "bundle": "App\\Inspecting\\InspectingBundle",
+      "require": "8.1.*"
+    }
+  }
 }

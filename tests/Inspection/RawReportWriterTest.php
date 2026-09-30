@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Inspection;
 
-use App\Inspection\RawReportWriter;
+use App\Inspecting\Writer\EngineRawReportWriter;
 use PHPUnit\Framework\TestCase;
 
 final class RawReportWriterTest extends TestCase
@@ -15,7 +15,7 @@ final class RawReportWriterTest extends TestCase
         $payload = "{\"totals\":{\"errors\":0}}\n";
 
         try {
-            $writtenPath = (new RawReportWriter())->write('.', 'phpstan', $payload, $path);
+            $writtenPath = (new EngineRawReportWriter())->write('.', 'phpstan', $payload, $path);
 
             self::assertSame($path, $writtenPath);
             self::assertSame($payload, file_get_contents($writtenPath));
@@ -28,7 +28,7 @@ final class RawReportWriterTest extends TestCase
 
     public function testDefaultPathSeparatesRawArtifactsByTargetAndAnalyzer(): void
     {
-        $writer = new RawReportWriter();
+        $writer = new EngineRawReportWriter();
         $path = $writer->defaultPath(
             'C:\\workspace\\Example',
             'phpstan',

@@ -2,15 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\Analyzer;
 
-use App\Inspection\Finding;
-use App\Inspection\Php\ClassDesignInspector;
-use App\Inspection\Php\ClassMetricsInspector;
-use App\Inspection\Php\CohesionInspector;
-use App\Inspection\Php\MethodDesignInspector;
-use App\Inspection\Php\ProjectCouplingInspector;
-use App\Inspection\RawReportWriter;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\Exception\EngineAnalyzerUnavailable;
+use App\Inspecting\ValueObject\EngineAnalyzerResult;
+use App\Inspecting\ValueObject\EngineFinding;
+use App\Inspecting\Inspector\EngineClassDesignInspector;
+use App\Inspecting\Inspector\EngineClassMetricsInspector;
+use App\Inspecting\Inspector\EngineCohesionInspector;
+use App\Inspecting\Inspector\EngineMethodDesignInspector;
+use App\Inspecting\Inspector\EngineProjectCouplingInspector;
+use App\Inspecting\Writer\EngineRawReportWriter;
 use PhpParser\Error;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
@@ -21,44 +24,53 @@ use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
-final readonly class PhpStructureAnalyzer implements AnalyzerInterface
+/**
+ * Parses target PHP source to derive structural metrics, design findings, and dependency-graph evidence without executing application code.
+ */
+final readonly class EnginePhpStructureAnalyzer implements EngineAnalyzerInterface
 {
-    private ClassDesignInspector $classInspector;
-    private ClassMetricsInspector $classMetricsInspector;
-    private CohesionInspector $cohesionInspector;
-    private MethodDesignInspector $methodInspector;
-    private RawReportWriter $rawReportWriter;
+    private EngineClassDesignInspector $classInspector;
+    private EngineClassMetricsInspector $classMetricsInspector;
+    private EngineCohesionInspector $cohesionInspector;
+    private EngineMethodDesignInspector $methodInspector;
+    private EngineRawReportWriter $rawReportWriter;
 
     public function __construct(
-        ?ClassDesignInspector $classInspector = null,
-        ?ClassMetricsInspector $classMetricsInspector = null,
-        ?CohesionInspector $cohesionInspector = null,
-        ?MethodDesignInspector $methodInspector = null,
-        ?RawReportWriter $rawReportWriter = null,
+        ?EngineClassDesignInspector $classInspector = null,
+        ?EngineClassMetricsInspector $classMetricsInspector = null,
+        ?EngineCohesionInspector $cohesionInspector = null,
+        ?EngineMethodDesignInspector $methodInspector = null,
+        ?EngineRawReportWriter $rawReportWriter = null,
     ) {
-        $this->classInspector = $classInspector ?? new ClassDesignInspector();
-        $this->classMetricsInspector = $classMetricsInspector ?? new ClassMetricsInspector();
-        $this->cohesionInspector = $cohesionInspector ?? new CohesionInspector();
-        $this->methodInspector = $methodInspector ?? new MethodDesignInspector();
-        $this->rawReportWriter = $rawReportWriter ?? new RawReportWriter();
+        $this->classInspector = $classInspector ?? new EngineClassDesignInspector();
+        $this->classMetricsInspector = $classMetricsInspector ?? new EngineClassMetricsInspector();
+        $this->cohesionInspector = $cohesionInspector ?? new EngineCohesionInspector();
+        $this->methodInspector = $methodInspector ?? new EngineMethodDesignInspector();
+        $this->rawReportWriter = $rawReportWriter ?? new EngineRawReportWriter();
     }
 
+    /**
+ * Returns the stable analyzer identifier used for selection, metric namespacing, failure reporting, and normalized report output.
+ */
     public function name(): string
     {
         return 'php-structure';
     }
 
-    public function inspect(string $target): AnalyzerResult
+    /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ */
+    public function inspect(string $target): EngineAnalyzerResult
     {
         $target = realpath($target) ?: throw new \InvalidArgumentException(sprintf('Inspection target does not exist: %s', $target));
         $source = $target . DIRECTORY_SEPARATOR . 'src';
 
         if (!is_dir($source)) {
-            throw new AnalyzerUnavailable(sprintf('No src directory exists in %s.', $target));
+            throw new EngineAnalyzerUnavailable(sprintf('No src directory exists in %s.', $target));
         }
 
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
-        $couplingInspector = new ProjectCouplingInspector();
+        $couplingInspector = new EngineProjectCouplingInspector();
         $findings = [];
         /** @var array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics */
         $metrics = [
@@ -97,7 +109,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
             $dependencyGraphJson . PHP_EOL,
         );
 
-        return new AnalyzerResult(
+        return new EngineAnalyzerResult(
             analyzer: $this->name(),
             findings: $findings,
             metrics: $metrics,
@@ -106,12 +118,12 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * @param list<Finding> $findings
+     * @param list<EngineFinding> $findings
      * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectFile(
         Parser $parser,
-        ProjectCouplingInspector $couplingInspector,
+        EngineProjectCouplingInspector $couplingInspector,
         string $target,
         \SplFileInfo $fileInfo,
         array &$findings,
@@ -129,7 +141,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
         try {
             $nodes = $parser->parse($contents);
         } catch (Error $error) {
-            $findings[] = new Finding(
+            $findings[] = new EngineFinding(
                 source: $this->name(),
                 rule: 'php.parse-error',
                 category: 'correctness',
@@ -154,7 +166,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
 
     /**
      * @param list<Node> $nodes
-     * @param list<Finding> $findings
+     * @param list<EngineFinding> $findings
      * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectNodes(array $nodes, string $file, array &$findings, array &$metrics): void
@@ -186,7 +198,7 @@ final readonly class PhpStructureAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * @param list<Finding> $findings
+     * @param list<EngineFinding> $findings
      * @param array{files:int, classes:int, interfaces:int, methods:int, maxComplexity:int, maxConstructorDependencies:int, maxImplementedInterfaces:int, inheritedClasses:int, maxFanOut:int, maxFanIn:int, maxInheritanceDepth:int} $metrics
      */
     private function inspectClass(Class_ $class, string $file, array &$findings, array &$metrics): void

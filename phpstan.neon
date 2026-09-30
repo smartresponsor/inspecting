@@ -3,4 +3,5 @@ parameters:
     paths:
         - src
         - tests
-        - bin/inspecting
+        - bin
+        - tool

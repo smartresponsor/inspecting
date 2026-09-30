@@ -4,39 +4,39 @@ declare(strict_types=1);
 
 namespace App\Tests\Inspection;
 
-use App\Analyzer\AnalyzerInterface;
-use App\Analyzer\AnalyzerResult;
-use App\Inspection\Inspector;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\ValueObject\EngineAnalyzerResult;
+use App\Inspecting\Inspector\EngineInspector;
 use PHPUnit\Framework\TestCase;
 
 final class InspectorTest extends TestCase
 {
     public function testItIsolatesAnalyzerFailures(): void
     {
-        $failing = new class implements AnalyzerInterface {
+        $failing = new class implements EngineAnalyzerInterface {
             public function name(): string
             {
                 return 'failing';
             }
 
-            public function inspect(string $target): AnalyzerResult
+            public function inspect(string $target): EngineAnalyzerResult
             {
                 throw new \RuntimeException('synthetic analyzer failure');
             }
         };
-        $healthy = new class implements AnalyzerInterface {
+        $healthy = new class implements EngineAnalyzerInterface {
             public function name(): string
             {
                 return 'healthy';
             }
 
-            public function inspect(string $target): AnalyzerResult
+            public function inspect(string $target): EngineAnalyzerResult
             {
-                return new AnalyzerResult('healthy', [], ['value' => 7]);
+                return new EngineAnalyzerResult('healthy', [], ['value' => 7]);
             }
         };
 
-        $report = (new Inspector([$failing, $healthy]))->inspect(__DIR__);
+        $report = (new EngineInspector([$failing, $healthy]))->inspect(__DIR__);
 
         self::assertSame(['healthy'], $report->analyzers);
         self::assertSame(['healthy.value' => 7], $report->metrics);
@@ -45,30 +45,30 @@ final class InspectorTest extends TestCase
 
     public function testItCanSelectAnalyzersExplicitly(): void
     {
-        $first = new class implements AnalyzerInterface {
+        $first = new class implements EngineAnalyzerInterface {
             public function name(): string
             {
                 return 'first';
             }
 
-            public function inspect(string $target): AnalyzerResult
+            public function inspect(string $target): EngineAnalyzerResult
             {
-                return new AnalyzerResult('first', [], ['value' => 1]);
+                return new EngineAnalyzerResult('first', [], ['value' => 1]);
             }
         };
-        $second = new class implements AnalyzerInterface {
+        $second = new class implements EngineAnalyzerInterface {
             public function name(): string
             {
                 return 'second';
             }
 
-            public function inspect(string $target): AnalyzerResult
+            public function inspect(string $target): EngineAnalyzerResult
             {
-                return new AnalyzerResult('second', [], ['value' => 2]);
+                return new EngineAnalyzerResult('second', [], ['value' => 2]);
             }
         };
 
-        $report = (new Inspector([$first, $second]))->inspect(__DIR__, ['second']);
+        $report = (new EngineInspector([$first, $second]))->inspect(__DIR__, ['second']);
 
         self::assertSame(['second'], $report->analyzers);
         self::assertSame(['second.value' => 2], $report->metrics);

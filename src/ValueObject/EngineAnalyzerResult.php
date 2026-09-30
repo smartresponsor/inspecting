@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\ValueObject;
 
-use App\Inspection\Finding;
+use App\Inspecting\ValueObject\EngineFinding;
 
-final readonly class AnalyzerResult
+/**
+ * Carries one analyzer's normalized findings, metrics, and raw report references across the Inspecting orchestration boundary.
+ */
+final readonly class EngineAnalyzerResult
 {
     /**
-     * @param list<Finding> $findings
+     * @param list<EngineFinding> $findings
      * @param array<string, int|float|string|bool|null> $metrics
      * @param list<string> $rawReportReferences
      */

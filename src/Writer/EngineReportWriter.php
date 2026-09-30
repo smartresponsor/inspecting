@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\Writer;
 
-final readonly class ReportWriter
+use App\Inspecting\ValueObject\EngineInspectionReport;
+
+final readonly class EngineReportWriter
 {
-    public function write(InspectionReport $report, ?string $outputPath = null): string
+    public function write(EngineInspectionReport $report, ?string $outputPath = null): string
     {
         $path = $outputPath ?? $this->defaultPath($report);
         $directory = dirname($path);
@@ -24,7 +26,7 @@ final readonly class ReportWriter
         return $path;
     }
 
-    public function defaultPath(InspectionReport $report): string
+    public function defaultPath(EngineInspectionReport $report): string
     {
         $target = realpath($report->target) ?: $report->target;
         $workspace = getcwd() ?: '.';

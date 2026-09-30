@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Inspection;
 
-use App\Inspection\Finding;
-use App\Inspection\InspectionSummary;
+use App\Inspecting\ValueObject\EngineFinding;
+use App\Inspecting\ValueObject\EngineInspectionSummary;
 use PHPUnit\Framework\TestCase;
 
 final class InspectionSummaryTest extends TestCase
 {
     public function testItAggregatesFindingsForConsumers(): void
     {
-        $summary = InspectionSummary::fromFindings([
-            new Finding('phpstan', 'a', 'correctness', 'high', 1.0, 'A'),
-            new Finding('php-structure', 'b', 'design', 'medium', 0.8, 'B'),
-            new Finding('rector', 'c', 'modernization', 'medium', 1.0, 'C', autofixable: true),
+        $summary = EngineInspectionSummary::fromFindings([
+            new EngineFinding('phpstan', 'a', 'correctness', 'high', 1.0, 'A'),
+            new EngineFinding('php-structure', 'b', 'design', 'medium', 0.8, 'B'),
+            new EngineFinding('rector', 'c', 'modernization', 'medium', 1.0, 'C', autofixable: true),
         ]);
 
         self::assertSame(3, $summary->findingCount);

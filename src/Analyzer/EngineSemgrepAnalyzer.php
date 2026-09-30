@@ -2,29 +2,42 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\Analyzer;
 
-use App\Inspection\Finding;
-use App\Inspection\RawReportWriter;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\Exception\EngineAnalyzerUnavailable;
+use App\Inspecting\ValueObject\EngineAnalyzerResult;
+use App\Inspecting\Resolver\EngineSemgrepConfigResolver;
+use App\Inspecting\ValueObject\EngineFinding;
+use App\Inspecting\Writer\EngineRawReportWriter;
 use Symfony\Component\Process\Exception\ProcessStartFailedException;
 use Symfony\Component\Process\Process;
 
-final readonly class SemgrepAnalyzer implements AnalyzerInterface
+/**
+ * Runs Semgrep with resolved repository or owned rules and normalizes its JSON diagnostics into Inspecting findings and evidence.
+ */
+final readonly class EngineSemgrepAnalyzer implements EngineAnalyzerInterface
 {
     public function __construct(
         private string $binary = 'semgrep',
         private ?string $config = null,
-        private RawReportWriter $rawReportWriter = new RawReportWriter(),
-        private SemgrepConfigResolver $configResolver = new SemgrepConfigResolver(),
+        private EngineRawReportWriter $rawReportWriter = new EngineRawReportWriter(),
+        private EngineSemgrepConfigResolver $configResolver = new EngineSemgrepConfigResolver(),
         private float $timeoutSeconds = 60.0,
     ) {}
 
+    /**
+ * Returns the stable analyzer identifier used for selection, metric namespacing, failure reporting, and normalized report output.
+ */
     public function name(): string
     {
         return 'semgrep';
     }
 
-    public function inspect(string $target): AnalyzerResult
+    /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ */
+    public function inspect(string $target): EngineAnalyzerResult
     {
         $target = realpath($target) ?: throw new \InvalidArgumentException(sprintf('Inspection target does not exist: %s', $target));
         $command = [
@@ -37,7 +50,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         $config = $this->configResolver->resolve($target, $this->config);
 
         if (null === $config) {
-            throw new AnalyzerUnavailable(sprintf('Semgrep is not configured in %s.', $target));
+            throw new EngineAnalyzerUnavailable(sprintf('Semgrep is not configured in %s.', $target));
         }
 
         $command[] = '--config=' . $config;
@@ -49,7 +62,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         try {
             $process->run();
         } catch (ProcessStartFailedException $exception) {
-            throw new AnalyzerUnavailable('Semgrep executable is not available.', $exception->getCode(), previous: $exception);
+            throw new EngineAnalyzerUnavailable('Semgrep executable is not available.', $exception->getCode(), previous: $exception);
         }
 
         if (!in_array($process->getExitCode(), [0, 1], true)) {
@@ -66,7 +79,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         return $this->parse($output, $rawReport);
     }
 
-    private function parse(string $json, string $rawReport): AnalyzerResult
+    private function parse(string $json, string $rawReport): EngineAnalyzerResult
     {
         $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
 
@@ -81,7 +94,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
             foreach ($results as $result) {
                 $finding = $this->parseResult($result);
 
-                if ($finding instanceof Finding) {
+                if ($finding instanceof EngineFinding) {
                     $findings[] = $finding;
                 }
             }
@@ -98,7 +111,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
                 $message = $error['message'] ?? null;
 
                 if (is_string($message)) {
-                    $findings[] = new Finding(
+                    $findings[] = new EngineFinding(
                         source: $this->name(),
                         rule: 'semgrep.engine',
                         category: 'correctness',
@@ -110,7 +123,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
             }
         }
 
-        return new AnalyzerResult(
+        return new EngineAnalyzerResult(
             analyzer: $this->name(),
             findings: $findings,
             metrics: [
@@ -121,7 +134,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
         );
     }
 
-    private function parseResult(mixed $result): ?Finding
+    private function parseResult(mixed $result): ?EngineFinding
     {
         if (!is_array($result)) {
             return null;
@@ -150,7 +163,7 @@ final readonly class SemgrepAnalyzer implements AnalyzerInterface
             ? $start['line']
             : null;
 
-        return new Finding(
+        return new EngineFinding(
             source: $this->name(),
             rule: $checkId,
             category: $category,

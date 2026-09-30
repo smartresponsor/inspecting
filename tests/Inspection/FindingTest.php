@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Inspection;
 
-use App\Inspection\Finding;
+use App\Inspecting\ValueObject\EngineFinding;
 use PHPUnit\Framework\TestCase;
 
 final class FindingTest extends TestCase
 {
     public function testItSerializesNormalizedFinding(): void
     {
-        $finding = new Finding(
+        $finding = new EngineFinding(
             source: 'phpstan',
             rule: 'example.rule',
             category: 'design',
@@ -30,6 +30,6 @@ final class FindingTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new Finding('test', 'rule', 'design', 'high', 1.1, 'Invalid confidence');
+        new EngineFinding('test', 'rule', 'design', 'high', 1.1, 'Invalid confidence');
     }
 }

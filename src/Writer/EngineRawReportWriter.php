@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\Writer;
 
-final readonly class RawReportWriter
+final readonly class EngineRawReportWriter
 {
     public function write(
         string $target,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection\Php;
+namespace App\Inspecting\Inspector;
 
 use PhpParser\Node\ComplexType;
 use PhpParser\Node\Identifier;
@@ -14,9 +14,14 @@ use PhpParser\Node\UnionType;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 
-final readonly class ClassMetricsInspector
+/**
+ * Computes class-level structural metrics and emits findings when constructor or inheritance complexity crosses configured thresholds.
+ */
+final readonly class EngineClassMetricsInspector
 {
     /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ *
      * @return array{
      *     constructorDependencies:int,
      *     implementedInterfaces:int,

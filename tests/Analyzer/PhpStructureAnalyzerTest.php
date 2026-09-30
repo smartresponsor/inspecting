@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Analyzer;
 
-use App\Analyzer\PhpStructureAnalyzer;
+use App\Inspecting\Analyzer\EnginePhpStructureAnalyzer;
 use PHPUnit\Framework\TestCase;
 
 final class PhpStructureAnalyzerTest extends TestCase
@@ -12,7 +12,7 @@ final class PhpStructureAnalyzerTest extends TestCase
     public function testItReportsExcessiveConstructorDependencies(): void
     {
         $target = __DIR__ . '/../Fixture/Structure';
-        $result = (new PhpStructureAnalyzer())->inspect($target);
+        $result = (new EnginePhpStructureAnalyzer())->inspect($target);
 
         self::assertSame('php-structure', $result->analyzer);
         self::assertSame(1, $result->metrics['classes']);
@@ -25,7 +25,7 @@ final class PhpStructureAnalyzerTest extends TestCase
     public function testItReportsProjectCouplingAndInheritanceMetrics(): void
     {
         $target = __DIR__ . '/../Fixture/Coupling';
-        $result = (new PhpStructureAnalyzer())->inspect($target);
+        $result = (new EnginePhpStructureAnalyzer())->inspect($target);
 
         self::assertSame(3, $result->metrics['maxFanOut']);
         self::assertSame(2, $result->metrics['maxFanIn']);

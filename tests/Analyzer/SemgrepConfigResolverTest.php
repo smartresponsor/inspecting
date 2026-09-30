@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Analyzer;
 
-use App\Analyzer\SemgrepConfigResolver;
+use App\Inspecting\Resolver\EngineSemgrepConfigResolver;
 use PHPUnit\Framework\TestCase;
 
 final class SemgrepConfigResolverTest extends TestCase
@@ -27,7 +27,7 @@ final class SemgrepConfigResolverTest extends TestCase
         $explicit = $this->root . DIRECTORY_SEPARATOR . 'custom.yml';
         file_put_contents($explicit, "rules: []\n");
 
-        $resolver = new SemgrepConfigResolver($this->createRulePack('owned'));
+        $resolver = new EngineSemgrepConfigResolver($this->createRulePack('owned'));
 
         self::assertSame($explicit, $resolver->resolve($this->root, $explicit));
     }
@@ -39,7 +39,7 @@ final class SemgrepConfigResolverTest extends TestCase
         file_put_contents($projectRulePack . DIRECTORY_SEPARATOR . 'project.yml', "rules: []\n");
         file_put_contents($this->root . DIRECTORY_SEPARATOR . '.semgrep.yml', "rules: []\n");
 
-        $resolver = new SemgrepConfigResolver($this->createRulePack('owned'));
+        $resolver = new EngineSemgrepConfigResolver($this->createRulePack('owned'));
 
         self::assertSame($projectRulePack, $resolver->resolve($this->root));
     }
@@ -47,14 +47,14 @@ final class SemgrepConfigResolverTest extends TestCase
     public function testOwnedRulePackIsFallback(): void
     {
         $owned = $this->createRulePack('owned');
-        $resolver = new SemgrepConfigResolver($owned);
+        $resolver = new EngineSemgrepConfigResolver($owned);
 
         self::assertSame($owned, $resolver->resolve($this->root));
     }
 
     public function testItReturnsNullWhenNoRulesAreAvailable(): void
     {
-        $resolver = new SemgrepConfigResolver($this->root . DIRECTORY_SEPARATOR . 'missing');
+        $resolver = new EngineSemgrepConfigResolver($this->root . DIRECTORY_SEPARATOR . 'missing');
 
         self::assertNull($resolver->resolve($this->root));
     }

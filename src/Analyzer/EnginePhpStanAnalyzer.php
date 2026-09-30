@@ -2,28 +2,40 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\Analyzer;
 
-use App\Inspection\Finding;
-use App\Inspection\RawReportWriter;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\Exception\EngineAnalyzerUnavailable;
+use App\Inspecting\ValueObject\EngineAnalyzerResult;
+use App\Inspecting\ValueObject\EngineFinding;
+use App\Inspecting\Writer\EngineRawReportWriter;
 use Symfony\Component\Process\Process;
 
-final readonly class PhpStanAnalyzer implements AnalyzerInterface
+/**
+ * Runs PHPStan against a target repository and normalizes its JSON diagnostics into Inspecting findings, metrics, and raw evidence.
+ */
+final readonly class EnginePhpStanAnalyzer implements EngineAnalyzerInterface
 {
-    public function __construct(private RawReportWriter $rawReportWriter = new RawReportWriter()) {}
+    public function __construct(private EngineRawReportWriter $rawReportWriter = new EngineRawReportWriter()) {}
 
+    /**
+ * Returns the stable analyzer identifier used for selection, metric namespacing, failure reporting, and normalized report output.
+ */
     public function name(): string
     {
         return 'phpstan';
     }
 
-    public function inspect(string $target): AnalyzerResult
+    /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ */
+    public function inspect(string $target): EngineAnalyzerResult
     {
         $target = realpath($target) ?: throw new \InvalidArgumentException(sprintf('Inspection target does not exist: %s', $target));
         $binary = $target . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'phpstan';
 
         if (!is_file($binary)) {
-            throw new AnalyzerUnavailable(sprintf('PHPStan is not installed in %s.', $target));
+            throw new EngineAnalyzerUnavailable(sprintf('PHPStan is not installed in %s.', $target));
         }
 
         $paths = array_values(array_filter(
@@ -60,7 +72,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
         return $this->parse($output, $rawReport);
     }
 
-    private function parse(string $json, string $rawReport): AnalyzerResult
+    private function parse(string $json, string $rawReport): EngineAnalyzerResult
     {
         $data = $this->decode($json);
         $findings = [
@@ -69,7 +81,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
         ];
         $totals = $this->totals($data, count($findings));
 
-        return new AnalyzerResult(
+        return new EngineAnalyzerResult(
             analyzer: $this->name(),
             findings: $findings,
             metrics: $totals,
@@ -101,7 +113,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
     /**
      * @param array<string, mixed> $data
      *
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function parseFileFindings(array $data): array
     {
@@ -127,7 +139,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
             foreach ($messages as $message) {
                 $finding = $this->parseMessage($file, $message);
 
-                if ($finding instanceof \App\Inspection\Finding) {
+                if ($finding instanceof \App\Inspecting\ValueObject\EngineFinding) {
                     $findings[] = $finding;
                 }
             }
@@ -136,7 +148,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
         return $findings;
     }
 
-    private function parseMessage(string $file, mixed $message): ?Finding
+    private function parseMessage(string $file, mixed $message): ?EngineFinding
     {
         if (!is_array($message)) {
             return null;
@@ -146,7 +158,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
         $text = $message['message'] ?? 'PHPStan finding';
         $line = $message['line'] ?? null;
 
-        return new Finding(
+        return new EngineFinding(
             source: $this->name(),
             rule: is_string($identifier) ? $identifier : 'phpstan.issue',
             category: 'correctness',
@@ -162,7 +174,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
     /**
      * @param array<string, mixed> $data
      *
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function parseGlobalFindings(array $data): array
     {
@@ -176,7 +188,7 @@ final readonly class PhpStanAnalyzer implements AnalyzerInterface
 
         foreach ($errors as $error) {
             if (is_string($error)) {
-                $findings[] = new Finding(
+                $findings[] = new EngineFinding(
                     source: $this->name(),
                     rule: 'phpstan.global',
                     category: 'correctness',

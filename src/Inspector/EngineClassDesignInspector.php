@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection\Php;
+namespace App\Inspecting\Inspector;
 
-use App\Inspection\Finding;
+use App\Inspecting\ValueObject\EngineFinding;
 use PhpParser\Node;
 use PhpParser\Node\ComplexType;
 use PhpParser\Node\Expr\MethodCall;
@@ -20,7 +20,10 @@ use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Interface_;
 
-final readonly class ClassDesignInspector
+/**
+ * Evaluates parsed PHP class and interface declarations for class-level design smells and responsibility-boundary violations.
+ */
+final readonly class EngineClassDesignInspector
 {
     private const int CONSTRUCTOR_DEPENDENCY_THRESHOLD = 8;
     private const int CLASS_LINE_THRESHOLD = 400;
@@ -28,7 +31,9 @@ final readonly class ClassDesignInspector
     private const int INTERFACE_METHOD_THRESHOLD = 10;
 
     /**
-     * @return list<Finding>
+ * Evaluates a parsed PHP class against class-level design rules and returns normalized structural findings for the source file.
+ *
+     * @return list<EngineFinding>
      */
     public function inspectClass(Class_ $class, string $file): array
     {
@@ -43,7 +48,9 @@ final readonly class ClassDesignInspector
     }
 
     /**
-     * @return list<Finding>
+ * Evaluates a parsed PHP interface against interface-level design rules and returns normalized structural findings for the source file.
+ *
+     * @return list<EngineFinding>
      */
     public function inspectInterface(Interface_ $interface, string $file): array
     {
@@ -53,7 +60,7 @@ final readonly class ClassDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'solid.isp.oversized-interface',
             category: 'design',
@@ -72,7 +79,7 @@ final readonly class ClassDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectConstructorDependencies(string $className, Class_ $class, string $file): array
     {
@@ -91,7 +98,7 @@ final readonly class ClassDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'solid.srp.excessive-constructor-dependencies',
             category: 'design',
@@ -105,7 +112,7 @@ final readonly class ClassDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectClassSize(string $className, Class_ $class, string $file): array
     {
@@ -115,7 +122,7 @@ final readonly class ClassDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'smell.large-class',
             category: 'maintainability',
@@ -130,7 +137,7 @@ final readonly class ClassDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectPublicApi(string $className, Class_ $class, string $file): array
     {
@@ -143,7 +150,7 @@ final readonly class ClassDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'smell.large-public-api',
             category: 'design',
@@ -157,7 +164,7 @@ final readonly class ClassDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectServiceLocator(string $className, Class_ $class, string $file): array
     {
@@ -184,7 +191,7 @@ final readonly class ClassDesignInspector
                 continue;
             }
 
-            return [new Finding(
+            return [new EngineFinding(
                 source: 'php-structure',
                 rule: 'solid.dip.service-locator',
                 category: 'design',

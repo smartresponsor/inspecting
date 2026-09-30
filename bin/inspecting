@@ -3,13 +3,13 @@
 
 declare(strict_types=1);
 
-use App\Analyzer\PhpStanAnalyzer;
-use App\Analyzer\PhpStructureAnalyzer;
-use App\Analyzer\RectorAnalyzer;
-use App\Analyzer\SemgrepAnalyzer;
-use App\Command\InspectCommand;
-use App\Command\ReportCommand;
-use App\Inspection\Inspector;
+use App\Inspecting\Analyzer\EnginePhpStanAnalyzer;
+use App\Inspecting\Analyzer\EnginePhpStructureAnalyzer;
+use App\Inspecting\Analyzer\EngineRectorAnalyzer;
+use App\Inspecting\Analyzer\EngineSemgrepAnalyzer;
+use App\Inspecting\Command\EngineInspectCommand;
+use App\Inspecting\Command\EngineReportCommand;
+use App\Inspecting\Inspector\EngineInspector;
 use Symfony\Component\Console\Application;
 
 $autoload = dirname(__DIR__) . '/vendor/autoload.php';
@@ -22,11 +22,11 @@ if (!is_file($autoload)) {
 require $autoload;
 
 $application = new Application('Inspecting', '0.1.0-dev');
-$application->addCommand(new InspectCommand(new Inspector([
-    new PhpStanAnalyzer(),
-    new PhpStructureAnalyzer(),
-    new RectorAnalyzer(),
-    new SemgrepAnalyzer(),
+$application->addCommand(new EngineInspectCommand(new EngineInspector([
+    new EnginePhpStanAnalyzer(),
+    new EnginePhpStructureAnalyzer(),
+    new EngineRectorAnalyzer(),
+    new EngineSemgrepAnalyzer(),
 ])));
-$application->addCommand(new ReportCommand());
+$application->addCommand(new EngineReportCommand());
 $application->run();

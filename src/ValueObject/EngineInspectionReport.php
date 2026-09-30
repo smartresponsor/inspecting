@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection;
+namespace App\Inspecting\ValueObject;
 
-final readonly class InspectionReport implements \JsonSerializable
+/**
+ * Represents the complete normalized result of one inspection run, including timing, analyzers, findings, metrics, and failures.
+ */
+final readonly class EngineInspectionReport implements \JsonSerializable
 {
     /**
      * @param list<string> $analyzers
-     * @param list<Finding> $findings
+     * @param list<EngineFinding> $findings
      * @param array<string, int|float|string|bool|null> $metrics
      * @param list<string> $rawReportReferences
      * @param array<string, string> $analyzerFailures
@@ -29,14 +32,16 @@ final readonly class InspectionReport implements \JsonSerializable
     }
 
     /**
+ * Serializes this inspection value into the stable array shape consumed by JSON reports and downstream automation.
+ *
      * @return array{
      *     target: string,
      *     startedAt: string,
      *     finishedAt: string,
      *     analyzers: list<string>,
-     *     findings: list<Finding>,
+     *     findings: list<EngineFinding>,
      *     metrics: array<string, int|float|string|bool|null>,
-     *     summary: InspectionSummary,
+     *     summary: EngineInspectionSummary,
      *     rawReportReferences: list<string>,
      *     analyzerFailures: array<string, string>
      * }
@@ -50,7 +55,7 @@ final readonly class InspectionReport implements \JsonSerializable
             'analyzers' => $this->analyzers,
             'findings' => $this->findings,
             'metrics' => $this->metrics,
-            'summary' => InspectionSummary::fromFindings($this->findings),
+            'summary' => EngineInspectionSummary::fromFindings($this->findings),
             'rawReportReferences' => $this->rawReportReferences,
             'analyzerFailures' => $this->analyzerFailures,
         ];

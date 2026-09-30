@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Command;
+namespace App\Inspecting\Command;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -11,13 +11,22 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'report', description: 'Read a persisted inspection report and emit its compact summary.')]
-final class ReportCommand extends Command
+/**
+ * Reads a persisted Inspecting report artifact and renders its normalized JSON payload for humans and downstream automation.
+ */
+final class EngineReportCommand extends Command
 {
+    /**
+ * Configures the command name, arguments, options, description, and help metadata exposed through Symfony Console.
+ */
     protected function configure(): void
     {
         $this->addArgument('report', InputArgument::REQUIRED, 'Path to a persisted inspection JSON report.');
     }
 
+    /**
+ * Executes the configured console workflow and returns the Symfony command exit status produced by the inspection or reporting operation.
+ */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $path = $input->getArgument('report');

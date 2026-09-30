@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\Resolver;
 
-final readonly class SemgrepConfigResolver
+/**
+ * Selects the Semgrep rule source for an inspection target from explicit, target-local, or Inspecting-owned configuration.
+ */
+final readonly class EngineSemgrepConfigResolver
 {
     public function __construct(private ?string $ownedRulePack = null) {}
 
+    /**
+ * Resolves the Semgrep configuration used for a target by honoring explicit, target-local, and Inspecting-owned rule sources in priority order.
+ */
     public function resolve(string $target, ?string $explicitConfig = null): ?string
     {
         if (null !== $explicitConfig) {

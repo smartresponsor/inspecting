@@ -2,29 +2,41 @@
 
 declare(strict_types=1);
 
-namespace App\Analyzer;
+namespace App\Inspecting\Analyzer;
 
-use App\Inspection\Finding;
-use App\Inspection\RawReportWriter;
+use App\Inspecting\Contract\EngineAnalyzerInterface;
+use App\Inspecting\Exception\EngineAnalyzerUnavailable;
+use App\Inspecting\ValueObject\EngineAnalyzerResult;
+use App\Inspecting\ValueObject\EngineFinding;
+use App\Inspecting\Writer\EngineRawReportWriter;
 use Symfony\Component\Process\Process;
 
-final readonly class RectorAnalyzer implements AnalyzerInterface
+/**
+ * Runs Rector in dry-run mode and converts proposed source transformations into normalized modernization findings and raw evidence.
+ */
+final readonly class EngineRectorAnalyzer implements EngineAnalyzerInterface
 {
-    public function __construct(private RawReportWriter $rawReportWriter = new RawReportWriter()) {}
+    public function __construct(private EngineRawReportWriter $rawReportWriter = new EngineRawReportWriter()) {}
 
+    /**
+ * Returns the stable analyzer identifier used for selection, metric namespacing, failure reporting, and normalized report output.
+ */
     public function name(): string
     {
         return 'rector';
     }
 
-    public function inspect(string $target): AnalyzerResult
+    /**
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ */
+    public function inspect(string $target): EngineAnalyzerResult
     {
         $target = realpath($target) ?: throw new \InvalidArgumentException(sprintf('Inspection target does not exist: %s', $target));
         $binary = $target . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'rector';
         $config = $target . DIRECTORY_SEPARATOR . 'rector.php';
 
         if (!is_file($binary) || !is_file($config)) {
-            throw new AnalyzerUnavailable(sprintf('Rector is not configured in %s.', $target));
+            throw new EngineAnalyzerUnavailable(sprintf('Rector is not configured in %s.', $target));
         }
 
         $process = new Process([
@@ -53,11 +65,11 @@ final readonly class RectorAnalyzer implements AnalyzerInterface
         return $this->parse($output, $rawReport);
     }
 
-    private function parse(string $json, string $rawReport): AnalyzerResult
+    private function parse(string $json, string $rawReport): EngineAnalyzerResult
     {
         $data = $this->decode($json);
 
-        return new AnalyzerResult(
+        return new EngineAnalyzerResult(
             analyzer: $this->name(),
             findings: $this->parseFindings($data),
             metrics: $this->parseTotals($data),
@@ -89,7 +101,7 @@ final readonly class RectorAnalyzer implements AnalyzerInterface
     /**
      * @param array<string, mixed> $data
      *
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function parseFindings(array $data): array
     {
@@ -121,9 +133,9 @@ final readonly class RectorAnalyzer implements AnalyzerInterface
         return $findings;
     }
 
-    private function finding(string $file, string $rector): Finding
+    private function finding(string $file, string $rector): EngineFinding
     {
-        return new Finding(
+        return new EngineFinding(
             source: $this->name(),
             rule: $rector,
             category: 'modernization',

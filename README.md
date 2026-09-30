@@ -10,14 +10,14 @@ It is intentionally separate from Canonization and Gating:
 
 ## Product boundary
 
-Inspecting is not a Symfony web application and is not a Symfony bundle.
+Inspecting is a PHP 8.4 quality-analysis engine whose primary product runtime remains the `bin/inspecting` CLI/library surface. It owns inspection, normalization, metrics, findings, raw evidence, and report generation; it does not own business CRUD, persistence, dashboards, or SaaS application behavior.
 
-The initial runtime is a small PHP 8.4 CLI/library that may use focused Symfony components where they add value. There is no FrameworkBundle, HTTP layer, database, dashboard, or SaaS dependency in the core.
+For canonical platform integration, Inspecting also exposes a reusable Symfony bundle and a minimal standalone FrameworkBundle runtime. The Symfony shell exists for container verification, debugging, and host composition; it does not introduce HTTP controllers, routes, templates, or user-facing UI into the inspection core.
 
 Canonical naming:
 
 - repository: `Inspecting`
-- PHP namespace: `App\\`
+- PHP namespace: `App\\Inspecting\\`
 - CLI entrypoint: `bin/inspecting`
 - generated reports: `.inspecting/`
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Inspection\Php;
+namespace App\Inspecting\Inspector;
 
-use App\Inspection\Finding;
+use App\Inspecting\ValueObject\EngineFinding;
 use PhpParser\Node;
 use PhpParser\Node\ComplexType;
 use PhpParser\Node\Expr\BinaryOp\BooleanAnd;
@@ -25,7 +25,10 @@ use PhpParser\Node\Stmt\Foreach_;
 use PhpParser\Node\Stmt\If_;
 use PhpParser\Node\Stmt\While_;
 
-final readonly class MethodDesignInspector
+/**
+ * Evaluates parsed methods for complexity, size, parameter-count, and other method-level maintainability signals.
+ */
+final readonly class EngineMethodDesignInspector
 {
     private const int METHOD_LINE_THRESHOLD = 60;
     private const int COMPLEXITY_THRESHOLD = 15;
@@ -48,7 +51,9 @@ final readonly class MethodDesignInspector
     ];
 
     /**
-     * @return array{findings:list<Finding>, complexity:int}
+ * Evaluates the supplied analysis target and returns the normalized findings, metrics, and evidence owned by this inspection surface.
+ *
+     * @return array{findings:list<EngineFinding>, complexity:int}
      */
     public function inspect(string $className, ClassMethod $method, string $file): array
     {
@@ -66,7 +71,7 @@ final readonly class MethodDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectMethodSize(string $className, ClassMethod $method, string $file): array
     {
@@ -76,7 +81,7 @@ final readonly class MethodDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'smell.long-method',
             category: 'maintainability',
@@ -91,7 +96,7 @@ final readonly class MethodDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectComplexity(string $className, ClassMethod $method, string $file, int $complexity): array
     {
@@ -99,7 +104,7 @@ final readonly class MethodDesignInspector
             return [];
         }
 
-        return [new Finding(
+        return [new EngineFinding(
             source: 'php-structure',
             rule: 'smell.high-cyclomatic-complexity',
             category: 'complexity',
@@ -114,7 +119,7 @@ final readonly class MethodDesignInspector
     }
 
     /**
-     * @return list<Finding>
+     * @return list<EngineFinding>
      */
     private function inspectTypeDispatch(string $className, ClassMethod $method, string $file): array
     {
@@ -129,7 +134,7 @@ final readonly class MethodDesignInspector
                 continue;
             }
 
-            return [new Finding(
+            return [new EngineFinding(
                 source: 'php-structure',
                 rule: 'solid.ocp.repeated-type-dispatch',
                 category: 'design',
