@@ -11,6 +11,7 @@
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.95",
+    "gating/gate": "dev-master",
     "phpstan/phpstan": "^2.2",
     "phpunit/phpunit": "^13.3",
     "rector/rector": "^2.4"
@@ -26,11 +27,30 @@
   "scripts": {
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
-    "phpstan": "phpstan analyse src tests bin/inspecting --level=max",
+    "phpstan": "phpstan analyse --configuration=phpstan.neon",
     "rector:check": "rector process --dry-run --config rector.php",
     "rector:fix": "rector process --config rector.php",
     "inspect:self": "@php bin/inspecting inspect .",
     "test": "phpunit",
-    "quality": ["@cs:check", "@phpstan", "@test"]
-  }
+    "test:coverage": [
+      "@php -r \"if (!is_dir('var/coverage')) { mkdir('var/coverage', 0777, true); }\"",
+      "@php -d xdebug.mode=coverage vendor/bin/phpunit --path-coverage --coverage-text=var/coverage/summary.txt"
+    ],
+    "gate": "@php vendor/bin/gating check --target=.",
+    "quality": ["@cs:check", "@phpstan", "@test", "@gate"]
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../Gating",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "gating/gate": "dev-master"
+        }
+      }
+    }
+  ]
 }
