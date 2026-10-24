@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 use App\Inspecting\Analyzer\EnginePhpStanAnalyzer;
 use App\Inspecting\Analyzer\EnginePhpStructureAnalyzer;
+use App\Inspecting\Analyzer\EngineNormativeRepositoryAnalyzer;
 use App\Inspecting\Analyzer\EngineRectorAnalyzer;
 use App\Inspecting\Analyzer\EngineSemgrepAnalyzer;
 use App\Inspecting\Command\EngineInspectCommand;
@@ -24,6 +25,7 @@ require $autoload;
 $application = new Application('Inspecting', '0.1.0-dev');
 $application->addCommand(new EngineInspectCommand(new EngineInspector([
     new EnginePhpStanAnalyzer(),
+    new EngineNormativeRepositoryAnalyzer(),
     new EnginePhpStructureAnalyzer(),
     new EngineRectorAnalyzer(),
     new EngineSemgrepAnalyzer(),
