@@ -54,7 +54,11 @@ final readonly class EngineSemgrepAnalyzer implements EngineAnalyzerInterface
         }
 
         $command[] = '--config=' . $config;
-        $command[] = $target . DIRECTORY_SEPARATOR . 'src';
+        $source = $target . DIRECTORY_SEPARATOR . 'src';
+        if (!is_dir($source)) {
+            throw new EngineAnalyzerUnavailable(sprintf('No src directory exists in %s.', $target));
+        }
+        $command[] = $source;
 
         $process = new Process($command, $target);
         $process->setTimeout($this->timeoutSeconds);
