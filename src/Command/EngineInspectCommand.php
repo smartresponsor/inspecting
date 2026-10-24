@@ -67,6 +67,18 @@ final class EngineInspectCommand extends Command
         $output->writeln($json);
         $output->writeln(sprintf('Report written: %s', $reportPath));
 
+        if ([] === $report->analyzers) {
+            $output->writeln('<error>Inspection incomplete: no analyzers executed successfully.</error>');
+
+            return Command::FAILURE;
+        }
+
+        if ([] !== $report->analyzerFailures) {
+            $output->writeln('<error>Inspection incomplete: one or more analyzers failed.</error>');
+
+            return Command::FAILURE;
+        }
+
         return Command::SUCCESS;
     }
 }
