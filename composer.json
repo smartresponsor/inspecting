@@ -68,7 +68,7 @@
   "repositories": [
     {
       "type": "path",
-      "url": "../Gating",
+      "url": "../gating",
       "options": {
         "symlink": true,
         "versions": {
@@ -78,7 +78,7 @@
     },
     {
       "type": "path",
-      "url": "../Cruding",
+      "url": "../cruding",
       "options": {
         "symlink": true,
         "versions": {
@@ -88,7 +88,7 @@
     },
     {
       "type": "path",
-      "url": "../Collectioning",
+      "url": "../collectioning",
       "options": {
         "symlink": true,
         "versions": {
@@ -98,7 +98,7 @@
     },
     {
       "type": "path",
-      "url": "../Tabling",
+      "url": "../tabling",
       "options": {
         "symlink": true,
         "versions": {
@@ -108,7 +108,7 @@
     },
     {
       "type": "path",
-      "url": "../Viewing",
+      "url": "../viewing",
       "options": {
         "symlink": true,
         "versions": {
@@ -118,7 +118,7 @@
     },
     {
       "type": "path",
-      "url": "../Interfacing",
+      "url": "../interfacing",
       "options": {
         "symlink": true,
         "versions": {
@@ -128,7 +128,7 @@
     },
     {
       "type": "path",
-      "url": "../Objecting",
+      "url": "../objecting",
       "options": {
         "symlink": true,
         "versions": {
@@ -138,7 +138,7 @@
     },
     {
       "type": "path",
-      "url": "../Failing",
+      "url": "../failing",
       "options": {
         "symlink": true,
         "versions": {
