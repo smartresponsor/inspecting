@@ -43,6 +43,37 @@ final class InspectorTest extends TestCase
         self::assertSame(['failing' => 'synthetic analyzer failure'], $report->analyzerFailures);
     }
 
+    public function testUnavailableAnalyzerIsSkippedWithoutFailure(): void
+    {
+        $unavailable = new class implements EngineAnalyzerInterface {
+            public function name(): string
+            {
+                return 'unavailable';
+            }
+
+            public function inspect(string $target): EngineAnalyzerResult
+            {
+                throw new \App\Inspecting\Exception\EngineAnalyzerUnavailable('Tool not installed');
+            }
+        };
+        $healthy = new class implements EngineAnalyzerInterface {
+            public function name(): string
+            {
+                return 'healthy';
+            }
+
+            public function inspect(string $target): EngineAnalyzerResult
+            {
+                return new EngineAnalyzerResult('healthy', [], ['value' => 1]);
+            }
+        };
+
+        $report = (new EngineInspector([$unavailable, $healthy]))->inspect(__DIR__);
+        self::assertSame(['healthy'], $report->analyzers);
+        self::assertSame(['healthy.value' => 1], $report->metrics);
+        self::assertSame([], $report->analyzerFailures);
+    }
+
     public function testItCanSelectAnalyzersExplicitly(): void
     {
         $first = new class implements EngineAnalyzerInterface {
