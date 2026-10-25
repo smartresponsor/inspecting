@@ -68,6 +68,33 @@ final class EngineReportWritersTest extends TestCase
         self::assertStringEndsWith('-artifact.json', $writer->defaultPath('some/path', ':', $stamp));
     }
 
+    public function testWritersRejectDirectoryDestinations(): void
+    {
+        $root = $this->fixtureDirectory();
+        try {
+            $now = new \DateTimeImmutable();
+            $report = new EngineInspectionReport($root, $now, $now, [], []);
+            foreach ([
+                static fn (): string => (new EngineRawReportWriter())->write($root, 'semgrep', '{}', $root),
+                static fn (): string => (new EngineReportWriter())->write($report, $root),
+            ] as $write) {
+                set_error_handler(static fn (): bool => true, E_WARNING);
+                try {
+                    try {
+                        $write();
+                        self::fail('Expected a report write failure.');
+                    } catch (\RuntimeException $exception) {
+                        self::assertStringContainsString('Unable to write', $exception->getMessage());
+                    }
+                } finally {
+                    restore_error_handler();
+                }
+            }
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function fixtureDirectory(): string
     {
         $path = sys_get_temp_dir().'/inspecting-writer-'.bin2hex(random_bytes(8));
