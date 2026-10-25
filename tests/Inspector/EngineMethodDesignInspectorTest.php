@@ -75,6 +75,19 @@ final class EngineMethodDesignInspectorTest extends TestCase
         self::assertSame(5, (new EngineMethodDesignInspector())->inspect('Example', $method, 'fixture.php')['complexity']);
     }
 
+    public function testNestedDispatchCountsOnlyMatchingVariable(): void
+    {
+        $method = $this->parseMethod('public function run(object $item, object $other): void {
+            $checks = [
+                [$item instanceof First, $other instanceof Second],
+                [$item instanceof Third, $item instanceof Fourth],
+            ];
+        }');
+        $result = (new EngineMethodDesignInspector())->inspect('Example', $method, 'fixture.php');
+        self::assertSame(['solid.ocp.repeated-type-dispatch'], $this->rules($result['findings']));
+        self::assertSame(3, $result['findings'][0]->evidence['instanceofCount']);
+    }
+
     /** @param list<\App\Inspecting\ValueObject\EngineFinding> $findings
      * @return list<string>
      */
