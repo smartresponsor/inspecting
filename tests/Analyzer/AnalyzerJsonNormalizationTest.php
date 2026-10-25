@@ -130,6 +130,33 @@ final class AnalyzerJsonNormalizationTest extends TestCase
         }
     }
 
+    public function testPhpStanRejectsUnexpectedExitStatus(): void
+    {
+        $root = $this->fixture();
+        try {
+            $this->binary($root, 'phpstan', ['files' => []], 3);
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('PHPStan failed with exit code 3');
+            (new EnginePhpStanAnalyzer())->inspect($root);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
+    public function testRectorRejectsUnexpectedExitStatus(): void
+    {
+        $root = $this->fixture();
+        try {
+            file_put_contents($root.'/rector.php', '<?php return [];');
+            $this->binary($root, 'rector', ['file_diffs' => []], 3);
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Rector failed with exit code 3');
+            (new EngineRectorAnalyzer())->inspect($root);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function fixture(): string
     {
         $root = sys_get_temp_dir().'/inspecting-json-'.bin2hex(random_bytes(8));
