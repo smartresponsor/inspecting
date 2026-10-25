@@ -9,6 +9,10 @@ use App\Inspecting\Exception\EngineAnalyzerUnavailable;
 use App\Inspecting\ValueObject\EngineAnalyzerResult;
 use App\Inspecting\ValueObject\EngineFinding;
 
+/**
+ * Scans a target's .canonization tree for Markdown normative documents and flags empty documents.
+ * Reports unavailability when the normative tree contains no Markdown documents.
+ */
 final readonly class EngineNormativeRepositoryAnalyzer implements EngineAnalyzerInterface
 {
     public function name(): string
