@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Inspecting\Writer;
 
+/**
+ * Persists analyzer-specific raw evidence as timestamped JSON artifacts under the inspection workspace.
+ * Accepts an explicit output path for callers that manage artifact storage themselves.
+ */
 final readonly class EngineRawReportWriter
 {
     public function write(
