@@ -97,6 +97,19 @@ final class EngineSemgrepCliTest extends TestCase
         }
     }
 
+    public function testRejectsScalarJsonDocument(): void
+    {
+        $root = $this->fixture();
+        try {
+            self::assertNotFalse(file_put_contents($root.'/scan', "<?php echo 'null';"));
+            $this->expectException(\UnexpectedValueException::class);
+            $this->expectExceptionMessage('Semgrep JSON output must decode to an object');
+            $this->analyzer($root)->inspect($root);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function analyzer(string $root): EngineSemgrepAnalyzer
     {
         return new EngineSemgrepAnalyzer(binary: PHP_BINARY, config: $root.'/rules.yml');
