@@ -121,6 +121,28 @@ final class EngineClassDesignInspectorTest extends TestCase
         self::assertSame(9, $findings[0]->evidence['dependencyCount']);
     }
 
+    public function testServiceLocatorRejectsUnrelatedReceiversAndNestedLookup(): void
+    {
+        $inspector = new EngineClassDesignInspector();
+        $unrelated = $this->parseClass('class Example {
+            public function __construct(private ContainerInterface $container) {}
+            public function run(): void {
+                $container = $this->container;
+                $container->get("service");
+                $this->container->other->get("service");
+            }
+        }');
+        self::assertSame([], $inspector->inspectClass($unrelated, 'fixture.php'));
+
+        $nested = $this->parseClass('class Example {
+            public function __construct(private ContainerInterface $container) {}
+            public function run(): void {
+                $values = [["a", $this->container->get("service")]];
+            }
+        }');
+        self::assertSame('solid.dip.service-locator', $inspector->inspectClass($nested, 'fixture.php')[0]->rule);
+    }
+
     private function parseClass(string $source): \PhpParser\Node\Stmt\Class_
     {
         $nodes = (new ParserFactory())->createForNewestSupportedVersion()->parse('<?php '.$source);
