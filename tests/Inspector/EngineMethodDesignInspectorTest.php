@@ -50,6 +50,31 @@ final class EngineMethodDesignInspectorTest extends TestCase
         self::assertSame(3, $findings[0]->evidence['instanceofCount']);
     }
 
+    public function testDispatchSupportsNamedTypesAndIgnoresScalarParameters(): void
+    {
+        $inspector = new EngineMethodDesignInspector();
+        $method = $this->parseMethod('public function run(Contract $item, int $count): void {
+            if ($item instanceof First) {}
+            if ($item instanceof Second) {}
+            if ($item instanceof Third) {}
+            if ($count instanceof Fourth) {}
+        }');
+        $findings = $inspector->inspect('Example', $method, 'fixture.php')['findings'];
+        self::assertSame(['solid.ocp.repeated-type-dispatch'], $this->rules($findings));
+        self::assertSame('item', $findings[0]->evidence['parameter']);
+        self::assertSame(3, $findings[0]->evidence['instanceofCount']);
+    }
+
+    public function testComplexityCountsNestedBooleanAndLoopBranches(): void
+    {
+        $method = $this->parseMethod('public function run(bool $value): void {
+            for ($i = 0; $i < 2; $i++) {
+                if ($value && $i > 0 || !$value) { break; }
+            }
+        }');
+        self::assertSame(5, (new EngineMethodDesignInspector())->inspect('Example', $method, 'fixture.php')['complexity']);
+    }
+
     /** @param list<\App\Inspecting\ValueObject\EngineFinding> $findings
      * @return list<string>
      */
