@@ -76,6 +76,40 @@ final class EngineProjectCouplingInspectorTest extends TestCase
         self::assertSame([], $inspector->graph()['nodes'][0]['dependencies']);
     }
 
+    public function testCollectsClassConstantsCatchTypesTraitsAndTypedProperties(): void
+    {
+        $inspector = $this->inspect('<?php
+            namespace Fixture;
+            trait SupportTrait {}
+            class Target {
+                use SupportTrait;
+                private ?Dependency $value = null;
+
+                public function handle(): void {
+                    $class = Dependency::class;
+                    try {
+                        throw new FirstFailure();
+                    } catch (FirstFailure|SecondFailure $error) {
+                        $class = SecondFailure::class;
+                    }
+                }
+            }
+            class Dependency {}
+        ');
+
+        $nodes = $inspector->graph()['nodes'];
+        self::assertSame(['Fixture\\Dependency', 'Fixture\\Target'], array_column($nodes, 'class'));
+        self::assertSame([
+            'Fixture\\Dependency',
+            'Fixture\\FirstFailure',
+            'Fixture\\SecondFailure',
+            'Fixture\\SupportTrait',
+        ], $nodes[1]['dependencies']);
+        self::assertSame(['Fixture\\Dependency'], $nodes[1]['internalDependencies']);
+        self::assertSame(1, $nodes[0]['fanIn']);
+        self::assertSame(4, $nodes[1]['fanOut']);
+    }
+
     private function inspect(string $source): EngineProjectCouplingInspector
     {
         $nodes = (new ParserFactory())->createForNewestSupportedVersion()->parse($source);
