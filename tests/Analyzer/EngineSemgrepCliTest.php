@@ -110,6 +110,20 @@ final class EngineSemgrepCliTest extends TestCase
         }
     }
 
+    public function testMissingExecutableIsReportedAsUnavailable(): void
+    {
+        $root = $this->fixture();
+        try {
+            $this->expectException(\App\Inspecting\Exception\EngineAnalyzerUnavailable::class);
+            $this->expectExceptionMessage('Semgrep executable is not available.');
+            (new EngineSemgrepAnalyzer(binary: $root.'/missing-semgrep', config: $root.'/rules.yml'))->inspect($root);
+        } finally {
+            unlink($root.'/rules.yml');
+            rmdir($root.'/src');
+            rmdir($root);
+        }
+    }
+
     private function analyzer(string $root): EngineSemgrepAnalyzer
     {
         return new EngineSemgrepAnalyzer(binary: PHP_BINARY, config: $root.'/rules.yml');
