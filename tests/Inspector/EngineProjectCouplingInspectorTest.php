@@ -110,6 +110,27 @@ final class EngineProjectCouplingInspectorTest extends TestCase
         self::assertSame(4, $nodes[1]['fanOut']);
     }
 
+    public function testCollectsCompoundTypeDependencies(): void
+    {
+        $inspector = $this->inspect('<?php
+            namespace Fixture;
+            interface Alpha {}
+            interface Beta {}
+            class Target {
+                private Alpha|Beta $property;
+                public function handle((Alpha&Beta)|null $input): Alpha|Beta {
+                    return $input;
+                }
+            }
+        ');
+
+        $nodes = $inspector->graph()['nodes'];
+        $target = array_values(array_filter($nodes, static fn(array $node): bool => str_ends_with($node['class'], 'Target')))[0];
+        self::assertCount(2, $target['dependencies']);
+        self::assertSame(2, $target['fanOut']);
+        self::assertSame(2, $inspector->metrics()['maxFanOut']);
+    }
+
     private function inspect(string $source): EngineProjectCouplingInspector
     {
         $nodes = (new ParserFactory())->createForNewestSupportedVersion()->parse($source);
