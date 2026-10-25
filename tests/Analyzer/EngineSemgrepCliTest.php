@@ -85,6 +85,18 @@ final class EngineSemgrepCliTest extends TestCase
         }
     }
 
+    public function testRejectsMalformedJson(): void
+    {
+        $root = $this->fixture();
+        try {
+            self::assertNotFalse(file_put_contents($root.'/scan', "<?php echo '{invalid-json';"));
+            $this->expectException(\JsonException::class);
+            $this->analyzer($root)->inspect($root);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function analyzer(string $root): EngineSemgrepAnalyzer
     {
         return new EngineSemgrepAnalyzer(binary: PHP_BINARY, config: $root.'/rules.yml');
