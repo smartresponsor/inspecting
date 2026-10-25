@@ -73,6 +73,63 @@ final class AnalyzerJsonNormalizationTest extends TestCase
         }
     }
 
+    public function testPhpStanSkipsInvalidDiagnosticShapesAndFallsBackToCounts(): void
+    {
+        $root = $this->fixture();
+        try {
+            $this->binary($root, 'phpstan', [
+                'files' => [
+                    'src/Bad.php' => ['messages' => 'not-an-array'],
+                    'src/Valid.php' => ['messages' => [
+                        null,
+                        ['identifier' => 99, 'message' => 100, 'line' => '7'],
+                    ]],
+                    123 => ['messages' => [['message' => 'ignored']]],
+                    'src/Unexpected.php' => 23,
+                ],
+                'errors' => ['real error', 42],
+                'totals' => ['errors' => 'invalid'],
+            ]);
+            $result = (new EnginePhpStanAnalyzer())->inspect($root);
+            self::assertCount(2, $result->findings);
+            self::assertSame('phpstan.issue', $result->findings[0]->rule);
+            self::assertSame('PHPStan finding', $result->findings[0]->message);
+            self::assertNull($result->findings[0]->line);
+            self::assertSame(['errors' => 0, 'fileErrors' => 2], $result->metrics);
+
+            $this->binary($root, 'phpstan', ['files' => 'invalid', 'errors' => 'invalid']);
+            self::assertSame([], (new EnginePhpStanAnalyzer())->inspect($root)->findings);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
+    public function testRectorSkipsMalformedDiffsAndUsesDefaultMetrics(): void
+    {
+        $root = $this->fixture();
+        try {
+            file_put_contents($root.'/rector.php', '<?php return [];');
+            $this->binary($root, 'rector', [
+                'file_diffs' => [
+                    null,
+                    ['file' => 123, 'applied_rectors' => ['Ignored']],
+                    ['file' => 'src/Thing.php', 'applied_rectors' => 'invalid'],
+                    ['file' => 'src/Thing.php', 'applied_rectors' => [null, 'ValidRector']],
+                ],
+                'totals' => ['changed_files' => 'invalid', 'errors' => null],
+            ]);
+            $result = (new EngineRectorAnalyzer())->inspect($root);
+            self::assertSame(['changedFiles' => 0, 'errors' => 0], $result->metrics);
+            self::assertCount(1, $result->findings);
+            self::assertSame('ValidRector', $result->findings[0]->rule);
+
+            $this->binary($root, 'rector', ['file_diffs' => 'invalid', 'totals' => null]);
+            self::assertSame([], (new EngineRectorAnalyzer())->inspect($root)->findings);
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function fixture(): string
     {
         $root = sys_get_temp_dir().'/inspecting-json-'.bin2hex(random_bytes(8));
