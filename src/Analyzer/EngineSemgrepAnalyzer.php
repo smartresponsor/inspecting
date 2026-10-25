@@ -60,6 +60,10 @@ final readonly class EngineSemgrepAnalyzer implements EngineAnalyzerInterface
         }
         $command[] = $source;
 
+        if (str_contains($this->binary, DIRECTORY_SEPARATOR) && !is_executable($this->binary)) {
+            throw new EngineAnalyzerUnavailable('Semgrep executable is not available.');
+        }
+
         $process = new Process($command, $target);
         $process->setTimeout($this->timeoutSeconds);
 
