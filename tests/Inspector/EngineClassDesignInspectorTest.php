@@ -76,6 +76,21 @@ final class EngineClassDesignInspectorTest extends TestCase
         self::assertSame([], $inspector->inspectClass($negative, 'fixture.php'));
     }
 
+    public function testClassSizeBoundary(): void
+    {
+        foreach ([400, 401] as $lineCount) {
+            $source = 'class Example {' . str_repeat("\n", $lineCount - 1) . '}';
+            $findings = (new EngineClassDesignInspector())->inspectClass(
+                $this->parseClass($source),
+                'fixture.php',
+            );
+            self::assertSame($lineCount === 401 ? ['smell.large-class'] : [], array_map(
+                static fn ($finding): string => $finding->rule,
+                $findings,
+            ));
+        }
+    }
+
     private function parseClass(string $source): \PhpParser\Node\Stmt\Class_
     {
         $nodes = (new ParserFactory())->createForNewestSupportedVersion()->parse('<?php '.$source);
