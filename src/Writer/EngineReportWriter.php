@@ -6,6 +6,10 @@ namespace App\Inspecting\Writer;
 
 use App\Inspecting\ValueObject\EngineInspectionReport;
 
+/**
+ * Serializes normalized inspection reports to JSON and creates their destination directories.
+ * Uses a timestamped workspace path unless the caller provides an output path.
+ */
 final readonly class EngineReportWriter
 {
     public function write(EngineInspectionReport $report, ?string $outputPath = null): string
