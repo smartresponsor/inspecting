@@ -157,6 +157,41 @@ final class AnalyzerJsonNormalizationTest extends TestCase
         }
     }
 
+    public function testPhpStanRejectsScalarAndListJsonRoots(): void
+    {
+        $this->assertInvalidRootResponses('phpstan', new EnginePhpStanAnalyzer());
+    }
+
+    public function testRectorRejectsScalarAndListJsonRoots(): void
+    {
+        $this->assertInvalidRootResponses('rector', new EngineRectorAnalyzer());
+    }
+
+    private function assertInvalidRootResponses(string $name, EnginePhpStanAnalyzer|EngineRectorAnalyzer $analyzer): void
+    {
+        $root = $this->fixture();
+        try {
+            if ('rector' === $name) {
+                self::assertNotFalse(file_put_contents($root.'/rector.php', '<?php return [];'));
+            }
+
+            foreach (['null', '[{"message":"invalid root"}]'] as $output) {
+                self::assertNotFalse(file_put_contents(
+                    $root.'/vendor/bin/'.$name,
+                    '<?php echo '.var_export($output, true).';',
+                ));
+                try {
+                    $analyzer->inspect($root);
+                    self::fail($name.' accepted an invalid JSON root: '.$output);
+                } catch (\UnexpectedValueException $exception) {
+                    self::assertStringContainsString('JSON', $exception->getMessage());
+                }
+            }
+        } finally {
+            $this->cleanup($root);
+        }
+    }
+
     private function fixture(): string
     {
         $root = sys_get_temp_dir().'/inspecting-json-'.bin2hex(random_bytes(8));
