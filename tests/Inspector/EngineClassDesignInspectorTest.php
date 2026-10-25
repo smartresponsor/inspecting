@@ -91,6 +91,36 @@ final class EngineClassDesignInspectorTest extends TestCase
         }
     }
 
+    public function testServiceLocatorIgnoresNonLookupCallsAndSupportsHas(): void
+    {
+        $inspector = new EngineClassDesignInspector();
+        $nonLookup = $this->parseClass('class Example {
+            public function __construct(private ContainerInterface $container) {}
+            public function run(): void { $this->container->set("service", new \\stdClass()); }
+        }');
+        self::assertSame([], $inspector->inspectClass($nonLookup, 'fixture.php'));
+
+        $lookup = $this->parseClass('class Example {
+            public function __construct(private ContainerInterface $container) {}
+            public function run(): void { if ($this->container->has("service")) { $this->container->has("other"); } }
+        }');
+        self::assertSame('solid.dip.service-locator', $inspector->inspectClass($lookup, 'fixture.php')[0]->rule);
+    }
+
+    public function testConstructorDependencyTypeVariants(): void
+    {
+        $inspector = new EngineClassDesignInspector();
+        $typed = $this->parseClass('class Example {
+            public function __construct(
+                A|B $first, A&B $second, ?A $third, int $fourth,
+                A $fifth, B $sixth, C $seventh, D $eighth, E $ninth, F $tenth
+            ) {}
+        }');
+        $findings = $inspector->inspectClass($typed, 'fixture.php');
+        self::assertSame('solid.srp.excessive-constructor-dependencies', $findings[0]->rule);
+        self::assertSame(9, $findings[0]->evidence['dependencyCount']);
+    }
+
     private function parseClass(string $source): \PhpParser\Node\Stmt\Class_
     {
         $nodes = (new ParserFactory())->createForNewestSupportedVersion()->parse('<?php '.$source);
